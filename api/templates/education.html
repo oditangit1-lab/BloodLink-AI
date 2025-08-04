@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+{% block title %}Education - Blood Bank Management System{% endblock %}
+
+{% block page_title %}Thalassemia Education Center{% endblock %}
+{% block page_subtitle %}Learn about Thalassemia, treatment options, and blood donation{% endblock %}
+
+{% block header_actions %}
+<div class="d-flex gap-2">
+  <button class="btn btn-outline-light btn-sm" onclick="refreshContent()">
+    <i class="bi bi-arrow-clockwise me-2"></i>
+    Refresh
+  </button>
+  <button class="btn btn-primary" onclick="exportInfo()">
+    <i class="bi bi-download me-2"></i>
+    Export Info
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Stats Overview -->
+<div class="stats-grid mb-4" style="grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+  <div class="stat-card info fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Topics Available</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-book"></i>
+      </div>
+    </div>
+    <div class="stat-value" style="font-size: 1.8rem;">10+</div>
+    <div class="stat-change">Comprehensive guides</div>
+  </div>
+
+  <div class="stat-card success fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Treatment Options</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-heart-pulse"></i>
+      </div>
+    </div>
+    <div class="stat-value" style="font-size: 1.8rem;">5</div>
+    <div class="stat-change">Modern treatments</div>
+  </div>
+
+  <div class="stat-card warning fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Blood Types</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-droplet"></i>
+      </div>
+    </div>
+    <div class="stat-value" style="font-size: 1.8rem;">8</div>
+    <div class="stat-change">All types covered</div>
+  </div>
+
+  <div class="stat-card primary fade-in">
+    <div class="stat-header">
+      <div class="stat-title">FAQ Items</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-question-circle"></i>
+      </div>
+    </div>
+    <div class="stat-value" style="font-size: 1.8rem;">10</div>
+    <div class="stat-change">Common questions</div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="row g-4">
+  <!-- Left: Interactive Q&A -->
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <i class="bi bi-chat-square-text me-2"></i>
+          Ask About Thalassemia
+        </h5>
+        <span class="badge bg-primary">
+          <i class="bi bi-robot me-1"></i>
+          AI Assistant
+        </span>
+      </div>
+      <div class="card-body">
+        <!-- Search Input -->
+        <div class="mb-4">
+          <label class="form-label fw-bold">
+            <i class="bi bi-search me-2"></i>
+            What would you like to know about Thalassemia?
+          </label>
+          <div class="position-relative">
+            <input type="text" 
+                   id="question" 
+                   class="form-control form-control-lg" 
+                   placeholder="Type your question here... (e.g., 'What is Thalassemia?')" 
+                   oninput="showEduSuggestions()"
+                   style="padding-right: 50px;">
+            <button class="btn btn-primary position-absolute top-50 end-0 translate-middle-y me-2" 
+                    onclick="askEdu()" 
+                    style="border-radius: 8px;">
+              <i class="bi bi-send"></i>
+            </button>
+          </div>
+          
+          <!-- Suggestions Dropdown -->
+          <div id="eduSuggestions" class="mt-2"></div>
+        </div>
+
+        <!-- Quick Topic Buttons -->
+        <div class="mb-4">
+          <h6 class="text-secondary mb-3">
+            <i class="bi bi-lightning me-2"></i>
+            Quick Topics
+          </h6>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <button class="btn btn-outline-primary w-100 text-start" 
+                      onclick="quickQuestion('What is Thalassemia?')">
+                <i class="bi bi-info-circle me-2"></i>
+                What is Thalassemia?
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button class="btn btn-outline-success w-100 text-start" 
+                      onclick="quickQuestion('What are the different types of Thalassemia?')">
+                <i class="bi bi-diagram-3 me-2"></i>
+                Types of Thalassemia
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button class="btn btn-outline-warning w-100 text-start" 
+                      onclick="quickQuestion('How is Thalassemia treated?')">
+                <i class="bi bi-heart-pulse me-2"></i>
+                Treatment Options
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button class="btn btn-outline-info w-100 text-start" 
+                      onclick="quickQuestion('Can people with Thalassemia donate blood?')">
+                <i class="bi bi-droplet me-2"></i>
+                Blood Donation
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Answer Display -->
+        <div class="card bg-dark border-secondary" id="answerCard" style="display: none;">
+          <div class="card-header bg-dark border-secondary">
+            <h6 class="mb-0 text-light">
+              <i class="bi bi-lightbulb me-2 text-warning"></i>
+              Answer
+            </h6>
+          </div>
+          <div class="card-body bg-dark">
+            <div id="answer" class="text-light"></div>
+          </div>
+        </div>
+
+        <!-- Default Welcome Message -->
+        <div id="welcomeMessage" class="text-center py-5">
+          <i class="bi bi-book fs-1 text-primary mb-3"></i>
+          <h5 class="text-primary mb-3">Welcome to Thalassemia Education Center</h5>
+          <p class="text-muted mb-4">
+            Get instant answers to your questions about Thalassemia, treatment options, and blood donation.
+            Use the search box above or click on quick topics to get started.
+          </p>
+          <div class="d-flex justify-content-center gap-3">
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
+              <i class="bi bi-check-circle me-1"></i>
+              Comprehensive Information
+            </span>
+            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">
+              <i class="bi bi-clock me-1"></i>
+              Instant Answers
+            </span>
+            <span class="badge bg-info bg-opacity-10 text-info px-3 py-2">
+              <i class="bi bi-shield-check me-1"></i>
+              Medically Accurate
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Thalassemia Info & FAQs -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-journal-medical me-2"></i>
+          Thalassemia Reference
+        </h5>
+      </div>
+      <div class="card-body p-0" style="color: white;">
+        <div class="p-3 border-bottom">
+          <h6 class="text-primary mb-2">
+            <i class="bi bi-info-circle me-2"></i>
+            Quick Reference Guide
+          </h6>
+          <p class="small mb-0">
+            Essential information about Thalassemia, symptoms, treatment, and patient care.
+          </p>
+        </div>
+        
+        <div id="aboutText" 
+             style="max-height: 500px; overflow-y: auto; padding: 1rem; font-size: 0.875rem; line-height: 1.6; white-space: pre-line;">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading reference information...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Additional Resources Section -->
+<div class="row g-4 mt-2">
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-collection me-2"></i>
+          Additional Resources
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <div class="card bg-primary bg-opacity-10 border-primary border-opacity-25 h-100">
+              <div class="card-body text-center">
+                <i class="bi bi-hospital fs-1 text-primary mb-3"></i>
+                <h6 class="text-primary">Treatment Centers</h6>
+                <p class="small text-muted mb-3">Find specialized Thalassemia treatment centers near you</p>
+                <button class="btn btn-outline-primary btn-sm">
+                  <i class="bi bi-geo-alt me-1"></i>
+                  Find Centers
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card bg-success bg-opacity-10 border-success border-opacity-25 h-100">
+              <div class="card-body text-center">
+                <i class="bi bi-people fs-1 text-success mb-3"></i>
+                <h6 class="text-success">Support Groups</h6>
+                <p class="small text-muted mb-3">Connect with other patients and families</p>
+                <button class="btn btn-outline-success btn-sm">
+                  <i class="bi bi-chat-dots me-1"></i>
+                  Join Groups
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card bg-warning bg-opacity-10 border-warning border-opacity-25 h-100">
+              <div class="card-body text-center">
+                <i class="bi bi-calendar-check fs-1 text-warning mb-3"></i>
+                <h6 class="text-warning">Appointment Booking</h6>
+                <p class="small text-muted mb-3">Schedule consultations with specialists</p>
+                <button class="btn btn-outline-warning btn-sm">
+                  <i class="bi bi-calendar-plus me-1"></i>
+                  Book Now
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card bg-info bg-opacity-10 border-info border-opacity-25 h-100">
+              <div class="card-body text-center">
+                <i class="bi bi-download fs-1 text-info mb-3"></i>
+                <h6 class="text-info">Educational Materials</h6>
+                <p class="small text-muted mb-3">Download brochures and guides</p>
+                <button class="btn btn-outline-info btn-sm">
+                  <i class="bi bi-file-earmark-pdf me-1"></i>
+                  Download
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let eduData = [];
+
+// Load education data and about text
+document.addEventListener('DOMContentLoaded', function() {
+  // Load about text
+  fetch('/about_text')
+    .then(r => r.text())
+    .then(txt => {
+      document.getElementById('aboutText').textContent = txt;
+    })
+    .catch(error => {
+      document.getElementById('aboutText').innerHTML = `
+        <div class="text-center py-4">
+          <i class="bi bi-exclamation-triangle text-warning fs-1 mb-3"></i>
+          <p class="text-muted">Failed to load reference information</p>
+        </div>
+      `;
+    });
+
+  // Load education suggestions
+  fetch('/education_suggestions')
+    .then(r => r.json())
+    .then(data => {
+      eduData = data;
+    })
+    .catch(error => {
+      console.error('Failed to load education suggestions:', error);
+    });
+});
+
+function showEduSuggestions() {
+  let val = document.getElementById('question').value.toLowerCase();
+  let sugDiv = document.getElementById('eduSuggestions');
+  
+  if (!val) { 
+    sugDiv.innerHTML = ""; 
+    return; 
+  }
+  
+  let matches = eduData.filter(p => p.toLowerCase().includes(val)).slice(0, 5);
+  
+  if (matches.length === 0) { 
+    sugDiv.innerHTML = ""; 
+    return; 
+  }
+  
+  sugDiv.innerHTML = `
+    <div class="card border-0 shadow-sm" style="background: var(--card-bg); position: absolute; z-index: 1000; width: 100%;">
+      <div class="card-body p-2">
+        <div class="list-group list-group-flush">
+          ${matches.map(m => `
+            <a href="#" class="list-group-item list-group-item-action border-0 py-2" 
+               onclick="selectSuggestion(\`${m.replace(/`/g, "\\`").replace(/'/g, "\\'")}\`)"
+               style="background: transparent; color: var(--text-primary);">
+              <i class="bi bi-lightbulb me-2 text-warning"></i>
+              <span class="small">${m.slice(0, 80)}${m.length > 80 ? '...' : ''}</span>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function selectSuggestion(val) {
+  document.getElementById('question').value = val;
+  document.getElementById('eduSuggestions').innerHTML = '';
+  askEdu();
+}
+
+function quickQuestion(question) {
+  document.getElementById('question').value = question;
+  askEdu();
+}
+
+function askEdu() {
+  const question = document.getElementById('question').value.trim();
+  const answerCard = document.getElementById('answerCard');
+  const welcomeMessage = document.getElementById('welcomeMessage');
+  const answerDiv = document.getElementById('answer');
+  
+  if (!question) {
+    showNotification('Please enter a question', 'warning');
+    return;
+  }
+
+  // Hide welcome message and show answer card
+  welcomeMessage.style.display = 'none';
+  answerCard.style.display = 'block';
+  
+  // Show loading state
+  answerDiv.innerHTML = `
+    <div class="d-flex align-items-center">
+      <div class="spinner-border spinner-border-sm text-primary me-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <span class="text-muted">Searching for information...</span>
+    </div>
+  `;
+
+  fetch('/ask', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ question })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const answer = data.answer || "Sorry, no information found for your question.";
+    answerDiv.innerHTML = `
+      <div class="mb-3">
+        <div class="d-flex align-items-start mb-2">
+          <i class="bi bi-question-circle text-primary me-2 mt-1"></i>
+          <strong class="text-primary">Question:</strong>
+        </div>
+        <p class="ms-4 mb-3">${question}</p>
+        
+        <div class="d-flex align-items-start mb-2">
+          <i class="bi bi-lightbulb text-warning me-2 mt-1"></i>
+          <strong class="text-warning">Answer:</strong>
+        </div>
+        <div class="ms-4">${answer}</div>
+      </div>
+      
+      <div class="border-top pt-3 mt-3">
+        <small class="text-muted">
+          <i class="bi bi-info-circle me-1"></i>
+          This information is for educational purposes. Please consult healthcare professionals for medical advice.
+        </small>
+      </div>
+    `;
+    
+    // Clear suggestions
+    document.getElementById('eduSuggestions').innerHTML = '';
+    
+    showNotification('Answer found successfully!', 'success');
+  })
+  .catch(err => {
+    answerDiv.innerHTML = `
+      <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Error:</strong> Failed to get answer. Please try again.
+      </div>
+    `;
+    console.error('Error:', err);
+    showNotification('Error occurred while fetching answer', 'error');
+  });
+}
+
+function refreshContent() {
+  location.reload();
+}
+
+function exportInfo() {
+  showNotification('Export functionality coming soon!', 'info');
+}
+
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('notificationContainer');
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  
+  const colors = {
+    success: 'border-success',
+    error: 'border-danger',
+    warning: 'border-warning',
+    info: 'border-info'
+  };
+  
+  notification.classList.add(colors[type] || colors.info);
+  notification.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-check-circle-fill me-3 text-${type === 'error' ? 'danger' : type}"></i>
+      <div class="flex-grow-1">
+        <strong>${message}</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
+    </div>
+  `;
+  container.appendChild(notification);
+  
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+// Custom styles for suggestions dropdown
+const style = document.createElement('style');
+style.textContent = `
+  #eduSuggestions .list-group-item:hover {
+    background: rgba(99, 102, 241, 0.1) !important;
+    transform: translateX(4px);
+    transition: all 0.2s ease;
+  }
+  
+  #aboutText::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  #aboutText::-webkit-scrollbar-track {
+    background: var(--dark-bg);
+  }
+  
+  #aboutText::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+  }
+  
+  #aboutText::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
+  }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

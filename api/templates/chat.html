@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+{% block title %}Chat - Blood Bank Management System{% endblock %}
+
+{% block page_title %}Live Chat Support{% endblock %}
+{% block page_subtitle %}Connect with donors and get instant support{% endblock %}
+
+{% block header_actions %}
+<div class="d-flex gap-2">
+  <button class="btn btn-outline-light btn-sm" onclick="refreshChat()">
+    <i class="bi bi-arrow-clockwise me-2"></i>
+    Refresh
+  </button>
+  <button class="btn btn-primary" onclick="clearChat()">
+    <i class="bi bi-trash me-2"></i>
+    Clear Chat
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Patient Information Card -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-person-heart me-2"></i>
+          Current Patient Information
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3" style="color: white;">
+          <div class="col-md-3">
+            <div class="d-flex align-items-center">
+              <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-3">
+                <i class="bi bi-person text-white"></i>
+              </div>
+              <div>
+                <div class="fw-bold">{{ patient.name }}</div>
+                <small>ID: {{ patient.patient_id }}</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-center p-2 bg-danger bg-opacity-10 rounded">
+              <i class="bi bi-droplet text-danger"></i>
+              <div class="fw-bold">{{ patient.blood_type }}</div>
+              <small>Blood Type</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-center p-2 bg-info bg-opacity-10 rounded">
+              <i class="bi bi-geo-alt text-info"></i>
+              <div class="fw-bold">{{ patient.city }}</div>
+              <small>City</small>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="text-center p-2 bg-success bg-opacity-10 rounded">
+              <i class="bi bi-hospital text-success"></i>
+              <div class="fw-bold">{{ patient.hospital }}</div>
+              <small>Hospital</small>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <span class="badge bg-warning" style="font-size: 16px;color: black;">
+            <i class="bi bi-info-circle me-1"></i>
+            Random patient loaded on each visit and also random 10 donors is select for chat.
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Chat Interface -->
+<div class="row g-4">
+  <!-- Left: Online Donors List -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <i class="bi bi-people me-2"></i>
+          Available Donors
+        </h5>
+        <span class="badge bg-success">{{ donors|length }} Online</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush" id="donorList" style="max-height: 500px; overflow-y: auto;">
+          {% for donor in donors %}
+          <a href="#" class="list-group-item list-group-item-action donor-item border-0" 
+             data-donor="{{ donor.donor_id }}" 
+             style="background: var(--card-bg); color: var(--text-primary); border-bottom: 1px solid var(--border-color) !important;">
+            <div class="d-flex align-items-center">
+              <div class="position-relative me-3">
+                <img src="https://ui-avatars.com/api/?name={{ donor.name }}&background=6366f1&color=fff" 
+                     class="rounded-circle" width="40" height="40">
+                <span class="position-absolute bottom-0 end-0 bg-success border border-2 border-white rounded-circle" 
+                      style="width: 12px; height: 12px;"></span>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-bold">{{ donor.name }}</div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-danger rounded-pill small">{{ donor.blood_type }}</span>
+                  <small class="text-muted">
+                    <i class="bi bi-geo-alt me-1"></i>{{ donor.city }}
+                  </small>
+                </div>
+              </div>
+              <div class="text-end">
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Chat Window -->
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <!-- Chat Header -->
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-chat-dots me-2"></i>
+          <h5 class="mb-0" id="chatWith">Select a donor to start chat</h5>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-light btn-sm" onclick="toggleNotifications()">
+            <i class="bi bi-bell"></i>
+          </button>
+          <button class="btn btn-outline-light btn-sm" onclick="exportChat()">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Chat Messages Area -->
+      <div class="card-body d-flex flex-column p-0">
+        <div id="chatMessages" class="flex-grow-1 p-3" style="height: 400px; overflow-y: auto; background: var(--dark-bg);">
+          <div class="text-center text-muted py-5" style="color: white;">
+            <i class="bi bi-chat-square-dots fs-1 mb-3" style="color: white;"></i>
+            <h6 style="color: white;">Welcome to Blood Bank Chat Support</h6>
+            <p class="mb-0" style="color: white;">Select a donor from the list to start a conversation</p>
+          </div>
+        </div>
+
+        <!-- Chat Input Area -->
+        <div class="border-top p-3" style="background: var(--card-bg);">
+          <div class="mb-2">
+            <input type="text" 
+                   id="chatInput" 
+                   class="form-control" 
+                   placeholder="Type your message..." 
+                   autocomplete="off" 
+                   oninput="showSuggestions()" 
+                   onkeydown="if(event.key==='Enter'){sendMessage();event.preventDefault();}"
+                   style="background: var(--dark-bg); border-color: var(--border-color); color: var(--text-primary);">
+            <div id="suggestions" class="position-relative mt-2"></div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary btn-sm" onclick="insertEmoji('👍')">
+                <i class="bi bi-emoji-smile"></i>
+              </button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="attachFile()">
+                <i class="bi bi-paperclip"></i>
+              </button>
+            </div>
+            <button class="btn btn-primary" onclick="sendMessage()">
+              <i class="bi bi-send me-2"></i>
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions Card -->
+<div class="row g-4 mt-2">
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-lightning me-2"></i>
+          Quick Actions
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <button class="btn btn-outline-primary w-100" onclick="quickMessage('What are the different types of Thalassemia?')">
+              <i class="bi bi-question-circle me-2"></i>
+              Types of Thalassemia
+            </button>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-outline-success w-100" onclick="quickMessage('How is Thalassemia treated?')">
+              <i class="bi bi-heart-pulse me-2"></i>
+              Treatment Options
+            </button>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-outline-warning w-100" onclick="quickMessage('Can people with Thalassemia donate blood?')">
+              <i class="bi bi-droplet me-2"></i>
+              Blood Donation
+            </button>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-outline-info w-100" onclick="quickMessage('What is the outlook for Thalassemia patients today?')">
+              <i class="bi bi-graph-up me-2"></i>
+              Patient Outlook
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let qaData = [];
+let currentDonor = null;
+
+// Load Q&A data
+fetch('/about_qa').then(r=>r.json()).then(data=>qaData=data);
+
+// Enhanced donor selection
+document.addEventListener('DOMContentLoaded', function() {
+  const donorItems = document.querySelectorAll('.donor-item');
+  donorItems.forEach(item => {
+    item.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Remove active class from all items
+      donorItems.forEach(i => i.classList.remove('active'));
+      
+      // Add active class to clicked item
+      this.classList.add('active');
+      
+      // Update chat header
+      const donorName = this.querySelector('.fw-bold').textContent;
+      const donorId = this.getAttribute('data-donor');
+      currentDonor = { name: donorName, id: donorId };
+      
+      document.getElementById('chatWith').innerHTML = `
+        <i class="bi bi-person-circle me-2"></i>
+        Chatting with ${donorName}
+      `;
+      
+      // Clear welcome message and show chat started message
+      const chatMessages = document.getElementById('chatMessages');
+      chatMessages.innerHTML = `
+        <div class="text-center py-3 mb-3">
+          <div class="badge bg-success">
+            <i class="bi bi-check-circle me-1"></i>
+            Connected with ${donorName}
+          </div>
+        </div>
+      `;
+      
+      // Auto-scroll to bottom
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+  });
+});
+
+function showSuggestions() {
+  let val = document.getElementById('chatInput').value.toLowerCase();
+  let sugDiv = document.getElementById('suggestions');
+  
+  if (!val) { 
+    sugDiv.innerHTML = ""; 
+    return; 
+  }
+  
+  let matches = qaData.filter(q => q.question.toLowerCase().includes(val)).slice(0,5);
+  
+  if (matches.length === 0) { 
+    sugDiv.innerHTML = ""; 
+    return; 
+  }
+  
+  sugDiv.innerHTML = `
+    <div class="card border-0 shadow-sm" style="background: var(--card-bg);">
+      <div class="card-body p-2">
+        <div class="list-group list-group-flush">
+          ${matches.map(m => `
+            <a href="#" class="list-group-item list-group-item-action border-0 py-2" 
+               onclick="selectSuggestion('${m.question.replace(/'/g,"&#39;")}')"
+               style="background: transparent; color: var(--text-primary);">
+              <i class="bi bi-lightbulb me-2 text-warning"></i>
+              ${m.question}
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function selectSuggestion(q) {
+  let match = qaData.find(m => m.question === q);
+  if (match) {
+    let chat = document.getElementById('chatMessages');
+    
+    // Add user message
+    chat.innerHTML += `
+      <div class="d-flex justify-content-end mb-3">
+        <div class="card border-0 bg-primary text-white" style="max-width: 70%;">
+          <div class="card-body p-2">
+            <div class="d-flex align-items-start">
+              <div class="flex-grow-1">
+                <small class="opacity-75">You</small>
+                <div>${q}</div>
+              </div>
+              <i class="bi bi-person-circle ms-2"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add system response with typing indicator
+    setTimeout(() => {
+      chat.innerHTML += `
+        <div class="d-flex justify-content-start mb-3">
+          <div class="card border-0" style="background: var(--card-bg); max-width: 70%;">
+            <div class="card-body p-2">
+              <div class="d-flex align-items-start">
+                <i class="bi bi-robot me-2 text-info"></i>
+                 <div class="flex-grow-1" style="color: white;">
+                  <small class="text-muted">System</small>
+                  <div>${match.answer}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      chat.scrollTop = chat.scrollHeight;
+    }, 1000);
+    
+    document.getElementById('chatInput').value = "";
+    document.getElementById('suggestions').innerHTML = "";
+    chat.scrollTop = chat.scrollHeight;
+  }
+}
+
+function sendMessage() {
+  let input = document.getElementById('chatInput');
+  let msg = input.value.trim();
+  
+  if (!msg) return;
+  
+  let chat = document.getElementById('chatMessages');
+  
+  // Add user message
+  chat.innerHTML += `
+    <div class="d-flex justify-content-end mb-3">
+      <div class="card border-0 bg-primary text-white" style="max-width: 70%;">
+        <div class="card-body p-2">
+          <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+              <small class="opacity-75">You</small>
+              <div>${msg}</div>
+              <small class="opacity-50">${new Date().toLocaleTimeString()}</small>
+            </div>
+            <i class="bi bi-person-circle ms-2"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add donor response
+  setTimeout(() => {
+    const responses = [
+      "Thanks for your message! I'll be happy to help.",
+      "I'm available to donate. When do you need it?",
+      "Let me check my schedule and get back to you.",
+      "I appreciate you reaching out. How can I assist?",
+      "I'm ready to help with the blood donation."
+    ];
+    
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    
+    chat.innerHTML += `
+      <div class="d-flex justify-content-start mb-3">
+        <div class="card border-0" style="background: var(--card-bg); max-width: 70%;">
+          <div class="card-body p-2">
+            <div class="d-flex align-items-start">
+              <i class="bi bi-person-circle me-2 text-success"></i>
+              <div class="flex-grow-1" style="color: white;">
+                <small>${currentDonor ? currentDonor.name : 'Donor'}</small>
+                <div>${randomResponse}</div>
+                <small>${new Date().toLocaleTimeString()}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    chat.scrollTop = chat.scrollHeight;
+  }, 1500);
+  
+  input.value = "";
+  document.getElementById('suggestions').innerHTML = "";
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function quickMessage(message) {
+  document.getElementById('chatInput').value = message;
+  sendMessage();
+}
+
+function insertEmoji(emoji) {
+  const input = document.getElementById('chatInput');
+  input.value += emoji;
+  input.focus();
+}
+
+function attachFile() {
+  showNotification('File attachment feature coming soon!', 'info');
+}
+
+function toggleNotifications() {
+  showNotification('Notifications toggled', 'success');
+}
+
+function exportChat() {
+  showNotification('Chat exported successfully', 'success');
+}
+
+function refreshChat() {
+  location.reload();
+}
+
+function clearChat() {
+  if (confirm('Are you sure you want to clear the chat?')) {
+    document.getElementById('chatMessages').innerHTML = `
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-chat-square-dots fs-1 mb-3"></i>
+        <h6>Chat Cleared</h6>
+        <p class="mb-0">Start a new conversation</p>
+      </div>
+    `;
+    showNotification('Chat cleared successfully', 'success');
+  }
+}
+
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('notificationContainer');
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  
+  const colors = {
+    success: 'border-success',
+    error: 'border-danger',
+    warning: 'border-warning',
+    info: 'border-info'
+  };
+  
+  notification.classList.add(colors[type] || colors.info);
+  notification.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-check-circle-fill me-3 text-${type === 'error' ? 'danger' : type}"></i>
+      <div class="flex-grow-1">
+        <strong>${message}</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
+    </div>
+  `;
+  container.appendChild(notification);
+  
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+// Add custom styles for active donor selection
+const style = document.createElement('style');
+style.textContent = `
+  .donor-item.active {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)) !important;
+    color: white !important;
+  }
+  
+  .donor-item.active .text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+  
+  .donor-item.active .badge {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+  }
+  
+  .donor-item:hover {
+    background: rgba(99, 102, 241, 0.1) !important;
+    transform: translateX(4px);
+    transition: all 0.2s ease;
+  }
+  
+  #chatMessages::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  #chatMessages::-webkit-scrollbar-track {
+    background: var(--dark-bg);
+  }
+  
+  #chatMessages::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+  }
+  
+  #chatMessages::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
+  }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

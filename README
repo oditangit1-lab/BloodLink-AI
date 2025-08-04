@@ -1,0 +1,13 @@
+# BloodLink AI
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+python api/app.py
+```
+
+## Access
+
+- Login: `/`
+- Dashboard: `/dashboard`

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blood Bank Management System</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+      color: #ffffff;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      width: 100%;
+    }
+
+    .sidebar {
+      background: linear-gradient(180deg, #1e1e1e 0%, #161616 100%);
+      width: 224px;
+      padding: 19px;
+      display: flex;
+      flex-direction: column;
+      gap: 19px;
+      border-right: 1px solid #2a2a2a;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Custom scrollbar styling for sidebar */
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: #1a1a1a;
+      border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #764ba2, #667eea);
+    }
+
+    /* Firefox scrollbar styling */
+    .sidebar {
+      scrollbar-width: thin;
+      scrollbar-color: #667eea #1a1a1a;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.44rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 16px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-section {
+      margin-bottom: 20px;
+    }
+
+    .nav-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: #aaa;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      position: relative;
+    }
+
+    .nav a:hover {
+      background-color: #2a2a2a;
+      color: #fff;
+      transform: translateX(4px);
+    }
+
+    .nav a.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .main-content {
+      flex-grow: 1;
+      padding: 26px;
+      background: #0f0f0f;
+      overflow-y: auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    .title-section h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 0.8rem;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      padding: 10px 19px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.72rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+      padding: 28px;
+      border-radius: 16px;
+      border: 1px solid #333;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      border-color: #444;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--accent-color);
+    }
+
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .stat-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-color);
+      opacity: 0.2;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .stat-change {
+      font-size: 0.8rem;
+      font-weight: 500;
+      opacity: 0.7;
+    }
+
+    /* Color themes */
+    .purple { --accent-color: linear-gradient(135deg, #667eea, #764ba2); }
+    .green  { --accent-color: linear-gradient(135deg, #56ab2f, #a8e6cf); }
+    .orange { --accent-color: linear-gradient(135deg, #ff7b7b, #ff416c); }
+    .blue   { --accent-color: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .pink   { --accent-color: linear-gradient(135deg, #f093fb, #f5576c); }
+    .yellow { --accent-color: linear-gradient(135deg, #ffecd2, #fcb69f); }
+
+    .activity-section {
+      margin-top: 26px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 19px;
+    }
+
+    .section-title {
+      font-size: 1.12rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .section-icon {
+      width: 19px;
+      height: 19px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .activity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(256px, 1fr));
+      gap: 19px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 5px;
+      background: #333;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-color);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .stat-card {
+      animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.2s; }
+    .stat-card:nth-child(4) { animation-delay: 0.3s; }
+    .stat-card:nth-child(5) { animation-delay: 0.4s; }
+    .stat-card:nth-child(6) { animation-delay: 0.5s; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🩸</div>
+        <span>BBMS</span>
+      </div>
+      
+      <nav class="nav">
+        <div class="nav-section">
+          <div class="nav-title">Management</div>
+          <a href="#" class="active">
+            <div class="nav-icon">📊</div>
+            Dashboard
+          </a>
+          <a href="#">
+            <div class="nav-icon">👥</div>
+            Donors
+          </a>
+          <a href="#">
+            <div class="nav-icon">👥</div>
+            Patients
+          </a>
+          <a href="#">
+            <div class="nav-icon">📦</div>
+            Settings
+          </a>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-title">
+            Data Processing & Visualization</div>
+          <a href="#">
+            <div class="nav-icon">📈</div>
+            Reports
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-title">
+            Real-Time Matching & Alerts
+          </div>
+          <a href="#">
+            <div class="nav-icon">📈</div>
+            Reports
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-title">
+            Engagement & Tracking
+          </div>
+          <a href="#">
+            <div class="nav-icon">📈</div>
+            Reports
+          </a>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-title">System</div>
+          <a href="#">
+            <div class="nav-icon">⚙️</div>
+            Settings
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Header -->
+      <header class="topbar">
+        <div class="title-section">
+          <h1>Blood Bank Management System</h1>
+          <div class="subtitle">Comprehensive blood bank analysis and management</div>
+        </div>
+        <button class="btn">🔄 Refresh Data</button>
+      </header>
+
+      <!-- Main Stats Grid -->
+      <section class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-header">
+            <div class="stat-title">Network</div>
+            <div class="stat-icon">🌐</div>
+          </div>
+          <div class="stat-value">BLOOD</div>
+          <div class="stat-change">Active Network</div>
+        </div>
+
+        <div class="stat-card green">
+          <div class="stat-header">
+            <div class="stat-title">Total Functions</div>
+            <div class="stat-icon">📈</div>
+          </div>
+          <div class="stat-value">8</div>
+          <div class="stat-change">Blood Types Available</div>
+        </div>
+
+        <div class="stat-card purple">
+          <div class="stat-header">
+            <div class="stat-title">Active Requests</div>
+            <div class="stat-icon">👁️</div>
+          </div>
+          <div class="stat-value">42</div>
+          <div class="stat-change">Pending Requests</div>
+        </div>
+
+        <div class="stat-card orange">
+          <div class="stat-header">
+            <div class="stat-title">Total Donations</div>
+            <div class="stat-icon">✍️</div>
+          </div>
+          <div class="stat-value">110</div>
+          <div class="stat-change">Completed Donations</div>
+        </div>
+      </section>
+
+      <!-- Activity Section -->
+      <section class="activity-section">
+        <div class="section-header">
+          <div class="section-icon">📊</div>
+          <h2 class="section-title">Social Sentiment & Activity</h2>
+        </div>
+        
+        <div class="activity-grid">
+          <div class="stat-card green">
+            <div class="stat-header">
+              <div class="stat-title">Activity Score</div>
+              <div class="stat-icon">📈</div>
+            </div>
+            <div class="stat-value">86/100</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 86%; background: linear-gradient(135deg, #56ab2f, #a8e6cf);"></div>
+            </div>
+          </div>
+
+          <div class="stat-card blue">
+            <div class="stat-header">
+              <div class="stat-title">Request Pressure</div>
+              <div class="stat-icon">👥</div>
+            </div>
+            <div class="stat-value">58%</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 58%; background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+            </div>
+          </div>
+
+          <div class="stat-card pink">
+            <div class="stat-header">
+              <div class="stat-title">24h Transactions</div>
+              <div class="stat-icon">📊</div>
+            </div>
+            <div class="stat-value">2387</div>
+            <div class="stat-change">Daily Transaction Volume</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

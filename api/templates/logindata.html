@@ -1,0 +1,676 @@
+{% extends "base.html" %}
+{% block title %}Login Data - Blood Bank Management System{% endblock %}
+
+{% block page_title %}Login Data Viewer{% endblock %}
+{% block page_subtitle %}System login records and authentication logs{% endblock %}
+
+{% block header_actions %}
+<div class="d-flex gap-2">
+  <button class="btn btn-outline-light btn-sm" onclick="refreshData()">
+    <i class="bi bi-arrow-clockwise me-2"></i>
+    Refresh
+  </button>
+  <button class="btn btn-outline-warning btn-sm" onclick="clearLogs()">
+    <i class="bi bi-trash me-2"></i>
+    Clear Logs
+  </button>
+  <button class="btn btn-primary" onclick="exportData()">
+    <i class="bi bi-download me-2"></i>
+    Export JSON
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Overview -->
+<div class="stats-grid mb-4" style="grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+  <div class="stat-card primary fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Total Logins</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-person-check"></i>
+      </div>
+    </div>
+    <div class="stat-value" id="totalLogins" style="font-size: 1.8rem;">-</div>
+    <div class="stat-change">Authentication records</div>
+  </div>
+
+  <div class="stat-card success fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Unique Users</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-people"></i>
+      </div>
+    </div>
+    <div class="stat-value" id="uniqueUsers" style="font-size: 1.8rem;">-</div>
+    <div class="stat-change">Different accounts</div>
+  </div>
+
+  <div class="stat-card warning fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Today's Logins</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-calendar-day"></i>
+      </div>
+    </div>
+    <div class="stat-value" id="todayLogins" style="font-size: 1.8rem;">-</div>
+    <div class="stat-change">Recent activity</div>
+  </div>
+
+  <div class="stat-card info fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Last Login</div>
+      <div class="stat-icon" style="width: 32px; height: 32px;">
+        <i class="bi bi-clock-history"></i>
+      </div>
+    </div>
+    <div class="stat-value" id="lastLogin" style="font-size: 1rem;">-</div>
+    <div class="stat-change">Most recent access</div>
+  </div>
+</div>
+
+<!-- Filters Section -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-funnel me-2"></i>
+      Filters & Search
+    </h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Username</label>
+        <select class="form-select" id="usernameFilter">
+          <option value="">All Users</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Date Range</label>
+        <select class="form-select" id="dateFilter">
+          <option value="">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Search</label>
+        <input type="text" class="form-control" id="searchInput" placeholder="Search usernames...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">&nbsp;</label>
+        <button class="btn btn-primary w-100" onclick="applyFilters()">
+          <i class="bi bi-search me-2"></i>
+          Apply
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Login Data Table -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+      <i class="bi bi-table me-2"></i>
+      Login Records
+    </h5>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-light btn-sm" onclick="refreshTable()">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <div class="dropdown">
+        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          <i class="bi bi-three-dots"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-dark">
+          <li><a class="dropdown-item" href="#" onclick="exportData()"><i class="bi bi-download me-2"></i>Export JSON</a></li>
+          <li><a class="dropdown-item" href="#" onclick="printTable()"><i class="bi bi-printer me-2"></i>Print</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="#" onclick="clearLogs()"><i class="bi bi-trash me-2"></i>Clear All Logs</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table id="loginTable" class="table table-dark table-hover mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th><input type="checkbox" class="form-check-input" id="selectAll"></th>
+            <th>Username</th>
+            <th>Password</th>
+            <th>Login Time</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Data will be populated by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Login Details Modal -->
+<div class="modal fade" id="loginDetailsModal" tabindex="-1" aria-labelledby="loginDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="loginDetailsModalLabel">
+          <i class="bi bi-info-circle me-2"></i>
+          Login Details
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="loginDetailsModalBody">
+        <!-- Details will be populated by JavaScript -->
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="exportCurrentDetails()">
+          <i class="bi bi-download me-2"></i>
+          Export Details
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="confirmModalLabel">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Confirm Action
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmModalBody">
+        <!-- Confirmation message will be populated by JavaScript -->
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmActionBtn">
+          <i class="bi bi-check-lg me-2"></i>
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let loginData = [];
+let filteredData = [];
+let currentDetailsData = null;
+
+// Generate random password mask
+function generatePasswordMask() {
+  const chars = '^&@%$^%%&^';
+  let mask = '';
+  for (let i = 0; i < 10; i++) {
+    mask += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return mask;
+}
+
+// Load login data
+async function loadData() {
+  try {
+    const response = await fetch('/static/login.json');
+    const data = await response.json();
+    
+    // Handle both single object and array formats
+    loginData = Array.isArray(data) ? data : [data];
+    filteredData = [...loginData];
+    
+    updateStats();
+    populateFilters();
+    buildTable(filteredData);
+    
+    showNotification('Login data loaded successfully', 'success');
+  } catch (error) {
+    console.error('Error loading login data:', error);
+    showNotification('Error loading login data', 'error');
+    
+    // Show empty state
+    document.getElementById('totalLogins').textContent = '0';
+    document.getElementById('uniqueUsers').textContent = '0';
+    document.getElementById('todayLogins').textContent = '0';
+    document.getElementById('lastLogin').textContent = 'No data';
+  }
+}
+
+// Update statistics
+function updateStats() {
+  const totalLogins = loginData.length;
+  const uniqueUsers = new Set(loginData.map(login => login.username)).size;
+  
+  // Calculate today's logins
+  const today = new Date().toDateString();
+  const todayLogins = loginData.filter(login => {
+    const loginDate = new Date(login.datetime).toDateString();
+    return loginDate === today;
+  }).length;
+  
+  // Get last login
+  const sortedLogins = [...loginData].sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+  const lastLogin = sortedLogins.length > 0 ? 
+    new Date(sortedLogins[0].datetime).toLocaleString() : 'No data';
+  
+  document.getElementById('totalLogins').textContent = totalLogins;
+  document.getElementById('uniqueUsers').textContent = uniqueUsers;
+  document.getElementById('todayLogins').textContent = todayLogins;
+  document.getElementById('lastLogin').textContent = lastLogin;
+}
+
+// Populate filter dropdowns
+function populateFilters() {
+  const usernameFilter = document.getElementById('usernameFilter');
+  const uniqueUsernames = [...new Set(loginData.map(login => login.username))].sort();
+  
+  usernameFilter.innerHTML = '<option value="">All Users</option>';
+  uniqueUsernames.forEach(username => {
+    usernameFilter.innerHTML += `<option value="${username}">${username}</option>`;
+  });
+}
+
+// Build table
+function buildTable(data) {
+  const tbody = document.querySelector('#loginTable tbody');
+  tbody.innerHTML = '';
+  
+  if (data.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center py-4">
+          <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+          <div class="text-muted">No login records found</div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  data.forEach((login, index) => {
+    const loginDate = new Date(login.datetime);
+    const isRecent = (Date.now() - loginDate.getTime()) < (24 * 60 * 60 * 1000); // Within 24 hours
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        <input type="checkbox" class="form-check-input login-checkbox" value="${index}">
+      </td>
+      <td>
+        <div class="d-flex align-items-center">
+          <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
+            <i class="bi bi-person text-white"></i>
+          </div>
+          <div>
+            <strong>${login.username}</strong>
+            ${isRecent ? '<span class="badge bg-success ms-2">Recent</span>' : ''}
+          </div>
+        </div>
+      </td>
+      <td>
+        <code class="text-warning">${generatePasswordMask()}</code>
+      </td>
+      <td>
+        <div class="d-flex align-items-center">
+          <i class="bi bi-clock me-2 text-info"></i>
+          ${loginDate.toLocaleTimeString()}
+        </div>
+      </td>
+      <td>
+        <div class="d-flex align-items-center">
+          <i class="bi bi-calendar me-2 text-success"></i>
+          ${loginDate.toLocaleDateString()}
+        </div>
+      </td>
+      <td>
+        <span class="badge ${isRecent ? 'bg-success' : 'bg-secondary'}">
+          <i class="bi ${isRecent ? 'bi-check-circle' : 'bi-clock-history'} me-1"></i>
+          ${isRecent ? 'Active' : 'Historical'}
+        </span>
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-primary btn-sm" onclick="showLoginDetails(${index})" title="View Details">
+            <i class="bi bi-eye"></i>
+          </button>
+          <button class="btn btn-outline-info btn-sm" onclick="copyUsername('${login.username}')" title="Copy Username">
+            <i class="bi bi-clipboard"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-sm" onclick="deleteLogin(${index})" title="Delete Record">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// Show login details in modal
+function showLoginDetails(index) {
+  const login = filteredData[index];
+  currentDetailsData = login;
+  
+  const loginDate = new Date(login.datetime);
+  const isRecent = (Date.now() - loginDate.getTime()) < (24 * 60 * 60 * 1000);
+  
+  document.getElementById('loginDetailsModalLabel').innerHTML = `
+    <i class="bi bi-person-circle me-2"></i>
+    Login Details - ${login.username}
+  `;
+  
+  const modalBody = document.getElementById('loginDetailsModalBody');
+  modalBody.innerHTML = `
+    <div class="row g-4">
+      <!-- User Information -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-primary">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-person-badge me-2"></i>
+              User Information
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-6"><strong>Username:</strong></div>
+              <div class="col-6">
+                <span class="badge bg-primary">${login.username}</span>
+              </div>
+              <div class="col-6"><strong>Password:</strong></div>
+              <div class="col-6">
+                <code class="text-warning">${generatePasswordMask()}</code>
+                <small class="text-muted d-block">Masked for security</small>
+              </div>
+              <div class="col-6"><strong>Status:</strong></div>
+              <div class="col-6">
+                <span class="badge ${isRecent ? 'bg-success' : 'bg-secondary'}">
+                  <i class="bi ${isRecent ? 'bi-check-circle' : 'bi-clock-history'} me-1"></i>
+                  ${isRecent ? 'Recently Active' : 'Historical Login'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Login Information -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-info">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-clock-history me-2"></i>
+              Login Information
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-6"><strong>Date:</strong></div>
+              <div class="col-6">${loginDate.toLocaleDateString()}</div>
+              <div class="col-6"><strong>Time:</strong></div>
+              <div class="col-6">${loginDate.toLocaleTimeString()}</div>
+              <div class="col-6"><strong>Full DateTime:</strong></div>
+              <div class="col-6">
+                <small class="text-muted">${login.datetime}</small>
+              </div>
+              <div class="col-6"><strong>Timezone:</strong></div>
+              <div class="col-6">${Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Session Details -->
+      <div class="col-12">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-success">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-shield-check me-2"></i>
+              Session Details
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                  <i class="bi bi-calendar-check text-primary fs-4 mb-2"></i>
+                  <div class="fw-bold">Login Date</div>
+                  <small class="text-muted">${loginDate.toDateString()}</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="text-center p-3 bg-info bg-opacity-10 rounded">
+                  <i class="bi bi-clock text-info fs-4 mb-2"></i>
+                  <div class="fw-bold">Login Time</div>
+                  <small class="text-muted">${loginDate.toLocaleTimeString()}</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="text-center p-3 ${isRecent ? 'bg-success' : 'bg-secondary'} bg-opacity-10 rounded">
+                  <i class="bi ${isRecent ? 'bi-check-circle' : 'bi-clock-history'} ${isRecent ? 'text-success' : 'text-secondary'} fs-4 mb-2"></i>
+                  <div class="fw-bold">Status</div>
+                  <small class="text-muted">${isRecent ? 'Recent Activity' : 'Historical'}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mt-4">
+      <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Security Note:</strong> Passwords are masked for security purposes. Original login data is preserved in the system logs.
+      </div>
+    </div>
+  `;
+  
+  const modal = new bootstrap.Modal(document.getElementById('loginDetailsModal'));
+  modal.show();
+}
+
+// Apply filters
+function applyFilters() {
+  const usernameFilter = document.getElementById('usernameFilter').value;
+  const dateFilter = document.getElementById('dateFilter').value;
+  const searchInput = document.getElementById('searchInput').value.toLowerCase();
+  
+  filteredData = loginData.filter(login => {
+    // Username filter
+    if (usernameFilter && login.username !== usernameFilter) {
+      return false;
+    }
+    
+    // Search filter
+    if (searchInput && !login.username.toLowerCase().includes(searchInput)) {
+      return false;
+    }
+    
+    // Date filter
+    if (dateFilter) {
+      const loginDate = new Date(login.datetime);
+      const now = new Date();
+      
+      switch (dateFilter) {
+        case 'today':
+          if (loginDate.toDateString() !== now.toDateString()) return false;
+          break;
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (loginDate < weekAgo) return false;
+          break;
+        case 'month':
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          if (loginDate < monthAgo) return false;
+          break;
+      }
+    }
+    
+    return true;
+  });
+  
+  buildTable(filteredData);
+  showNotification(`Filtered to ${filteredData.length} records`, 'info');
+}
+
+// Copy username to clipboard
+function copyUsername(username) {
+  navigator.clipboard.writeText(username).then(() => {
+    showNotification(`Username "${username}" copied to clipboard`, 'success');
+  }).catch(() => {
+    showNotification('Failed to copy username', 'error');
+  });
+}
+
+// Delete login record
+function deleteLogin(index) {
+  const login = filteredData[index];
+  showConfirmModal(
+    'Delete Login Record',
+    `Are you sure you want to delete the login record for "${login.username}" from ${new Date(login.datetime).toLocaleString()}?`,
+    () => {
+      // Remove from original data
+      const originalIndex = loginData.findIndex(l => l.datetime === login.datetime && l.username === login.username);
+      if (originalIndex > -1) {
+        loginData.splice(originalIndex, 1);
+        applyFilters();
+        updateStats();
+        showNotification('Login record deleted successfully', 'success');
+      }
+    }
+  );
+}
+
+// Clear all logs
+function clearLogs() {
+  showConfirmModal(
+    'Clear All Login Logs',
+    'Are you sure you want to delete ALL login records? This action cannot be undone.',
+    () => {
+      loginData = [];
+      filteredData = [];
+      buildTable([]);
+      updateStats();
+      populateFilters();
+      showNotification('All login records cleared', 'warning');
+    }
+  );
+}
+
+// Show confirmation modal
+function showConfirmModal(title, message, onConfirm) {
+  document.getElementById('confirmModalLabel').innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i>${title}`;
+  document.getElementById('confirmModalBody').innerHTML = `<p>${message}</p>`;
+  
+  const confirmBtn = document.getElementById('confirmActionBtn');
+  confirmBtn.onclick = () => {
+    onConfirm();
+    bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+  };
+  
+  const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+  modal.show();
+}
+
+// Export functions
+function exportData() {
+  if (loginData.length === 0) {
+    showNotification('No data to export', 'warning');
+    return;
+  }
+  
+  const dataStr = JSON.stringify(loginData, null, 2);
+  const dataBlob = new Blob([dataStr], {type: 'application/json'});
+  const url = URL.createObjectURL(dataBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `login_data_${new Date().toISOString().split('T')[0]}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showNotification('Login data exported successfully', 'success');
+}
+
+function exportCurrentDetails() {
+  if (currentDetailsData) {
+    const dataStr = JSON.stringify(currentDetailsData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `login_${currentDetailsData.username}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showNotification('Login details exported successfully', 'success');
+  }
+}
+
+// Utility functions
+function refreshData() {
+  loadData();
+}
+
+function refreshTable() {
+  buildTable(filteredData);
+  showNotification('Table refreshed', 'success');
+}
+
+function printTable() {
+  window.print();
+}
+
+// Select all functionality
+document.getElementById('selectAll').addEventListener('change', function() {
+  const checkboxes = document.querySelectorAll('.login-checkbox');
+  checkboxes.forEach(cb => cb.checked = this.checked);
+});
+
+// Notification system
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('notificationContainer');
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  
+  const colors = {
+    success: 'border-success',
+    error: 'border-danger',
+    warning: 'border-warning',
+    info: 'border-info'
+  };
+  
+  notification.classList.add(colors[type] || colors.info);
+  notification.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-check-circle-fill me-3 text-${type === 'error' ? 'danger' : type}"></i>
+      <div class="flex-grow-1">
+        <strong>${message}</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
+    </div>
+  `;
+  container.appendChild(notification);
+  
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+// Load data when page loads
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+{% endblock %}

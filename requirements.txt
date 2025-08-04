@@ -1,0 +1,10 @@
+flask
+flask-socketio
+scikit-learn
+pandas
+numpy
+xgboost
+lightgbm
+joblib
+eventlet
+imbalanced-learn

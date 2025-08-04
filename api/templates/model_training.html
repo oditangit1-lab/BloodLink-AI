@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+{% block title %}Model Training - Blood Bank Management System{% endblock %}
+
+{% block page_title %}Model Training{% endblock %}
+{% block page_subtitle %}Donor Availability Prediction Models{% endblock %}
+
+{% block header_actions %}
+<div class="d-flex gap-2">
+  <button class="btn btn-outline-light btn-sm" onclick="refreshModels()">
+    <i class="bi bi-arrow-clockwise me-2"></i>
+    Refresh Status
+  </button>
+  <button class="btn btn-primary" onclick="trainAllModels()">
+    <i class="bi bi-cpu me-2"></i>
+    Train All Models
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Warning Alert -->
+{% if existing_models|length > 0 %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+  <i class="bi bi-exclamation-triangle me-2"></i>
+  <strong>Warning:</strong> The following models already exist: <code>{{ existing_models|join(', ') }}</code>
+  <br>Retraining will <strong>replace</strong> previous models. You can use the Ensemble Prediction module if all base models exist.
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<!-- Main Content Tabs -->
+<div class="card">
+  <div class="card-header">
+    <ul class="nav nav-tabs card-header-tabs" id="trainingTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
+          <i class="bi bi-info-circle me-2"></i>Overview
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="training-tab" data-bs-toggle="tab" data-bs-target="#training" type="button" role="tab" aria-controls="training" aria-selected="false">
+          <i class="bi bi-cpu me-2"></i>Model Training
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="ensemble-tab" data-bs-toggle="tab" data-bs-target="#ensemble" type="button" role="tab" aria-controls="ensemble" aria-selected="false">
+          <i class="bi bi-collection me-2"></i>Ensemble
+        </button>
+      </li>
+    </ul>
+  </div>
+  
+  <div class="card-body">
+    <div class="tab-content" id="trainingTabContent">
+      <!-- Overview Tab -->
+      <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+        <div class="row g-4">
+          <!-- Features Overview -->
+          <div class="col-lg-8">
+            <div class="card bg-dark border-secondary">
+              <div class="card-header bg-dark border-secondary">
+                <h5 class="mb-0 text-light">
+                  <i class="bi bi-list-check me-2"></i>
+                  Features Used for Training
+                </h5>
+              </div>
+              <div class="card-body bg-dark">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <h6 class="text-primary mb-3">Demographic Features</h6>
+                    <ul class="list-unstyled text-light">
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Age</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Gender</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Blood Type</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>City</li>
+                    </ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="text-info mb-3">Behavioral Features</h6>
+                    <ul class="list-unstyled text-light">
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Response Rate</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Average Response Time (hours)</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Weekend Availability</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Emergency Availability</li>
+                    </ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="text-warning mb-3">Engagement Metrics</h6>
+                    <ul class="list-unstyled text-light">
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Reliability Score</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Social Influence Score</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Total Donations</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Total Cancellations</li>
+                    </ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="text-danger mb-3">Health & Timing</h6>
+                    <ul class="list-unstyled text-light">
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Average Donation Interval (days)</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>BMI</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Hemoglobin Level</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Days Since Last Donation</li>
+                      <li><i class="bi bi-check-circle text-success me-2"></i>Days Until Next Eligible</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Training Status Overview -->
+          <div class="col-lg-4">
+            <div class="card bg-dark border-secondary">
+              <div class="card-header bg-dark border-secondary">
+                <h5 class="mb-0 text-light">
+                  <i class="bi bi-gear me-2"></i>
+                  Training Status
+                </h5>
+              </div>
+              <div class="card-body bg-dark">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="text-light">Logistic Regression</span>
+                  <span class="badge {% if models.logreg %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if models.logreg %}Ready{% else %}Not Trained{% endif %}
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="text-light">Random Forest</span>
+                  <span class="badge {% if models.rf %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if models.rf %}Ready{% else %}Not Trained{% endif %}
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="text-light">XGBoost</span>
+                  <span class="badge {% if models.xgb %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if models.xgb %}Ready{% else %}Not Trained{% endif %}
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="text-light">LightGBM</span>
+                  <span class="badge {% if models.lgbm %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if models.lgbm %}Ready{% else %}Not Trained{% endif %}
+                  </span>
+                </div>
+                <hr class="border-secondary">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-light"><strong>Ensemble</strong></span>
+                  <span class="badge {% if models.logreg and models.rf and models.xgb and models.lgbm %}bg-primary{% else %}bg-secondary{% endif %}">
+                    {% if models.logreg and models.rf and models.xgb and models.lgbm %}Available{% else %}Requires All Models{% endif %}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Training Tab -->
+      <div class="tab-pane fade" id="training" role="tabpanel" aria-labelledby="training-tab">
+        <div class="row g-4">
+          {% for model in [
+            {'key':'logreg','name':'Logistic Regression', 'icon': 'bi-graph-up', 'color': 'primary'},
+            {'key':'rf','name':'Random Forest', 'icon': 'bi-tree', 'color': 'success'},
+            {'key':'xgb','name':'XGBoost', 'icon': 'bi-lightning', 'color': 'warning'},
+            {'key':'lgbm','name':'LightGBM', 'icon': 'bi-speedometer2', 'color': 'info'}
+          ] %}
+          <div class="col-lg-6">
+            <div class="card bg-dark border-secondary h-100" id="card-{{model.key}}">
+              <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-light">
+                  <i class="bi {{model.icon}} me-2 text-{{model.color}}"></i>
+                  {{model.name}}
+                </h5>
+                <span class="badge {% if models[model.key] %}bg-success{% else %}bg-secondary{% endif %}">
+                  {% if models[model.key] %}Trained{% else %}Not Trained{% endif %}
+                </span>
+              </div>
+              <div class="card-body bg-dark">
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                  <div class="progress" style="height: 8px; background-color: #333;">
+                    <div class="progress-bar bg-{{model.color}}" id="progress-{{model.key}}" 
+                         role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Training Result -->
+                <div class="mb-3">
+                  <h6 class="text-secondary mb-2">Training Result</h6>
+                  <p class="mb-0 text-light" id="result-{{model.key}}">
+                    <span class="text-secondary">Ready to train</span>
+                  </p>
+                </div>
+                
+                <!-- Result Interpretation -->
+                <div class="mb-3">
+                  <h6 class="text-secondary mb-2">Result Interpretation</h6>
+                  <p class="mb-0 small text-light" id="interpret-{{model.key}}">
+                    <span class="text-secondary">Training results will appear here</span>
+                  </p>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                  <button class="btn btn-{{model.color}} btn-sm" id="train-btn-{{model.key}}">
+                    <i class="bi bi-play-fill me-1"></i>
+                    Train Model
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" id="cancel-btn-{{model.key}}" style="display:none;">
+                    <i class="bi bi-stop-fill me-1"></i>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Ensemble Tab -->
+      <div class="tab-pane fade" id="ensemble" role="tabpanel" aria-labelledby="ensemble-tab">
+        <div class="card bg-dark border-secondary" id="card-ensemble">
+          <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-light">
+              <i class="bi bi-collection me-2 text-primary"></i>
+              Ensemble Prediction
+            </h5>
+            <span class="badge {% if models.logreg and models.rf and models.xgb and models.lgbm %}bg-primary{% else %}bg-secondary{% endif %}">
+              {% if models.logreg and models.rf and models.xgb and models.lgbm %}Available{% else %}Requires All Models{% endif %}
+            </span>
+          </div>
+          <div class="card-body bg-dark">
+            {% if models.logreg and models.rf and models.xgb and models.lgbm %}
+            <div class="row">
+              <div class="col-md-8">
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                  <div class="progress" style="height: 8px; background-color: #333;">
+                    <div class="progress-bar bg-primary" id="progress-ensemble" 
+                         role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Training Result -->
+                <div class="mb-3">
+                  <h6 class="text-secondary mb-2">Training Result</h6>
+                  <p class="mb-0 text-light" id="result-ensemble">
+                    <span class="text-secondary">Ready to combine models</span>
+                  </p>
+                </div>
+                
+                <!-- Result Interpretation -->
+                <div class="mb-3">
+                  <h6 class="text-secondary mb-2">Result Interpretation</h6>
+                  <p class="mb-0 small text-light" id="interpret-ensemble">
+                    <span class="text-secondary">Ensemble combines all trained models for better accuracy</span>
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-4 d-flex align-items-center justify-content-end">
+                <button class="btn btn-primary" id="train-btn-ensemble">
+                  <i class="bi bi-collection-fill me-2"></i>
+                  Combine Models
+                </button>
+              </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info mb-0">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Train all base models first to enable Ensemble Prediction.</strong>
+              <br>
+              <small class="text-muted">
+                Ensemble prediction combines Logistic Regression, Random Forest, XGBoost, and LightGBM models for improved accuracy.
+              </small>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const modelList = [
+  {key:'logreg', name:'Logistic Regression', color: 'primary'},
+  {key:'rf', name:'Random Forest', color: 'success'},
+  {key:'xgb', name:'XGBoost', color: 'warning'},
+  {key:'lgbm', name:'LightGBM', color: 'info'}
+];
+
+function getInterpretation(auc) {
+  if (auc < 0.6) {
+    return `<span class="text-danger">Model performance is poor (ROC-AUC: ${auc})</span><br>
+    <small class="text-muted">Consider improving features, balancing classes, or using ensemble methods. 
+    <a href="https://scikit-learn.org/stable/modules/model_evaluation.html#roc-metrics" target="_blank" class="text-decoration-none">Learn more about ROC-AUC</a></small>`;
+  } else if (auc < 0.7) {
+    return `<span class="text-warning">Model performance is fair (ROC-AUC: ${auc})</span><br>
+    <small class="text-muted">May be useful for rough prioritization. 
+    <a href="https://en.wikipedia.org/wiki/Receiver_operating_characteristic" target="_blank" class="text-decoration-none">Learn about ROC curves</a></small>`;
+  } else {
+    return `<span class="text-success">Model is predictive (ROC-AUC: ${auc})</span><br>
+    <small class="text-muted">This model can be used effectively for donor availability prediction.</small>`;
+  }
+}
+
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('notificationContainer');
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  
+  const colors = {
+    success: 'border-success',
+    error: 'border-danger',
+    warning: 'border-warning',
+    info: 'border-info'
+  };
+  
+  notification.classList.add(colors[type] || colors.info);
+  notification.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-check-circle-fill me-3 text-${type === 'error' ? 'danger' : type}"></i>
+      <div class="flex-grow-1">
+        <strong>${message}</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
+    </div>
+  `;
+  container.appendChild(notification);
+  
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+function refreshModels() {
+  location.reload();
+}
+
+function trainAllModels() {
+  if (confirm('This will train all models sequentially. This may take several minutes. Continue?')) {
+    // Switch to training tab first
+    const trainingTab = new bootstrap.Tab(document.getElementById('training-tab'));
+    trainingTab.show();
+    
+    modelList.forEach((model, index) => {
+      setTimeout(() => {
+        document.getElementById(`train-btn-${model.key}`).click();
+      }, index * 1000);
+    });
+  }
+}
+
+// Initialize model training handlers
+modelList.forEach(m => {
+  const trainBtn = document.getElementById('train-btn-' + m.key);
+  const cancelBtn = document.getElementById('cancel-btn-' + m.key);
+  const progressBar = document.getElementById('progress-' + m.key);
+  const resultText = document.getElementById('result-' + m.key);
+  const interpretText = document.getElementById('interpret-' + m.key);
+
+  if (trainBtn) {
+    trainBtn.onclick = function(e) {
+      e.preventDefault();
+      trainBtn.disabled = true;
+      cancelBtn.style.display = 'inline-block';
+      resultText.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split me-1"></i>Training in progress...</span>';
+      interpretText.innerHTML = '<span class="text-muted">Please wait while the model trains...</span>';
+      
+      let progress = 0;
+      let interval = setInterval(() => {
+        if (progress < 90) {
+          progress += 10;
+          progressBar.style.width = progress + '%';
+          progressBar.setAttribute('aria-valuenow', progress);
+        }
+      }, 400);
+
+      fetch('/train_models', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({model: m.key})
+      })
+      .then(r => r.json())
+      .then(data => {
+        clearInterval(interval);
+        progressBar.style.width = '100%';
+        progressBar.setAttribute('aria-valuenow', 100);
+        
+        if (data.status === "done") {
+          resultText.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Training completed</span><br>
+                                  <small class="text-light">Accuracy: <strong>${data.accuracy}</strong> | ROC-AUC: <strong>${data.auc}</strong></small>`;
+          interpretText.innerHTML = getInterpretation(data.auc) + `<br><small class="text-muted mt-1">Model saved: <code>${data.file}</code></small>`;
+          showNotification(`${m.name} training completed successfully!`, 'success');
+        } else {
+          resultText.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Training failed</span><br>
+                                  <small class="text-light">${data.message}</small>`;
+          interpretText.innerHTML = '<span class="text-muted">Please try again or check the logs for more details.</span>';
+          showNotification(`${m.name} training failed: ${data.message}`, 'error');
+        }
+        
+        trainBtn.disabled = false;
+        cancelBtn.style.display = 'none';
+      })
+      .catch(error => {
+        clearInterval(interval);
+        resultText.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Network error</span>`;
+        interpretText.innerHTML = '<span class="text-muted">Please check your connection and try again.</span>';
+        trainBtn.disabled = false;
+        cancelBtn.style.display = 'none';
+        showNotification(`Network error during ${m.name} training`, 'error');
+      });
+
+      cancelBtn.onclick = function(ev) {
+        ev.preventDefault();
+        clearInterval(interval);
+        resultText.innerHTML = '<span class="text-warning"><i class="bi bi-stop-circle me-1"></i>Training cancelled</span>';
+        interpretText.innerHTML = '<span class="text-muted">Training was cancelled by user.</span>';
+        progressBar.style.width = '0%';
+        progressBar.setAttribute('aria-valuenow', 0);
+        trainBtn.disabled = false;
+        cancelBtn.style.display = 'none';
+        showNotification(`${m.name} training cancelled`, 'warning');
+      };
+    };
+  }
+});
+
+// Ensemble training handler
+const trainEnsembleBtn = document.getElementById('train-btn-ensemble');
+const progressEnsemble = document.getElementById('progress-ensemble');
+const resultEnsemble = document.getElementById('result-ensemble');
+const interpretEnsemble = document.getElementById('interpret-ensemble');
+
+if (trainEnsembleBtn) {
+  trainEnsembleBtn.onclick = function(e) {
+    e.preventDefault();
+    trainEnsembleBtn.disabled = true;
+    resultEnsemble.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split me-1"></i>Combining models...</span>';
+    interpretEnsemble.innerHTML = '<span class="text-muted">Creating ensemble from trained models...</span>';
+    
+    let progress = 0;
+    let interval = setInterval(() => {
+      if (progress < 90) {
+        progress += 10;
+        progressEnsemble.style.width = progress + '%';
+        progressEnsemble.setAttribute('aria-valuenow', progress);
+      }
+    }, 400);
+
+    fetch('/train_ensemble', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+      clearInterval(interval);
+      progressEnsemble.style.width = '100%';
+      progressEnsemble.setAttribute('aria-valuenow', 100);
+      
+      if (data.status === "done") {
+        resultEnsemble.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Ensemble completed</span><br>
+                                    <small class="text-light">Accuracy: <strong>${data.accuracy}</strong> | ROC-AUC: <strong>${data.auc}</strong></small>`;
+        interpretEnsemble.innerHTML = getInterpretation(data.auc) + `<br><small class="text-muted mt-1">Ensemble saved: <code>${data.file}</code></small>`;
+        showNotification('Ensemble model created successfully!', 'success');
+      } else {
+        resultEnsemble.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Ensemble failed</span><br>
+                                    <small class="text-light">${data.message}</small>`;
+        interpretEnsemble.innerHTML = '<span class="text-muted">Please ensure all base models are trained first.</span>';
+        showNotification(`Ensemble creation failed: ${data.message}`, 'error');
+      }
+      
+      trainEnsembleBtn.disabled = false;
+    })
+    .catch(error => {
+      clearInterval(interval);
+      resultEnsemble.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Network error</span>`;
+      interpretEnsemble.innerHTML = '<span class="text-muted">Please check your connection and try again.</span>';
+      trainEnsembleBtn.disabled = false;
+      showNotification('Network error during ensemble creation', 'error');
+    });
+  };
+}
+</script>
+{% endblock %}

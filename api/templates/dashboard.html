@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Real-time blood bank monitoring and analytics{% endblock %}
+
+{% block content %}
+<!-- Stats Overview -->
+<div class="stats-grid">
+  <div class="stat-card success fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Available This Week</div>
+      <div class="stat-icon">
+        <i class="bi bi-calendar-check"></i>
+      </div>
+    </div>
+    <div class="stat-value">{{ donors_available_this_week }}</div>
+    <div class="stat-change">Donors likely available</div>
+  </div>
+
+  <div class="stat-card warning fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Blood Types</div>
+      <div class="stat-icon">
+        <i class="bi bi-droplet"></i>
+      </div>
+    </div>
+    <div class="stat-value">8</div>
+    <div class="stat-change">Available Types</div>
+  </div>
+
+  <div class="stat-card danger fade-in">
+    <div class="stat-header">
+      <div class="stat-title">Urgent Requests</div>
+      <div class="stat-icon">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+    </div>
+    <div class="stat-value">42</div>
+    <div class="stat-change">Pending Critical</div>
+  </div>
+</div>
+
+<!-- Main Dashboard Content -->
+<div class="row g-4">
+  <!-- Live Charts Section -->
+  <div class="col-lg-8">
+    <div class="row g-4">
+      <!-- Urgent Patients Chart -->
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i class="bi bi-graph-up me-2"></i>
+              Urgent Patients (Live)
+            </h5>
+            <span class="badge bg-primary" onclick="showInfoPopup()" style="cursor: pointer;">
+              <i class="bi bi-info-circle"></i>
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="urgentChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Blood Type Distribution -->
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-bar-chart me-2"></i>
+              Blood Type Distribution
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="bloodTypeChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Urgency Overview -->
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-pie-chart me-2"></i>
+              Urgency Overview
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="urgencyPie"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Requests Timeline -->
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-graph-up-arrow me-2"></i>
+              Pending Requests Over Time
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="pendingRequestsLine"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Donor Registrations by City -->
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-geo-alt me-2"></i>
+              Donor Registrations by City
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="donorCityBar"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Patient List -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-person-lines-fill me-2"></i>
+          Live Patient List
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="patient-list p-3" id="livePatientList">
+          <!-- Patient items will be dynamically added here -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info Modal -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="infoModalLabel">
+          <i class="bi bi-info-circle me-2"></i>
+          Live Data Simulation
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">
+          <strong>Real-time Dashboard Simulation</strong>
+        </p>
+        <p>
+          For demonstration purposes, this dashboard automatically generates new urgent patient events every 10 seconds. 
+          Notifications and charts update in real-time to simulate a live hospital environment.
+        </p>
+        <div class="alert alert-info" role="alert">
+          <i class="bi bi-lightbulb me-2"></i>
+          Click on any patient in the live list to access smart matching features.
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it!</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let urgentCounts = {}; // {city: count}
+let urgentChart;
+let livePatients = [];
+
+// Chart setup and functions
+function setupChart() {
+  const ctx = document.getElementById('urgentChart').getContext('2d');
+  urgentChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Urgent Patients',
+        data: [],
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        borderColor: 'rgba(239, 68, 68, 1)',
+        borderWidth: 1,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#f8fafc'
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#94a3b8'
+          },
+          grid: {
+            color: '#334155'
+          }
+        },
+        x: {
+          ticks: {
+            color: '#94a3b8'
+          },
+          grid: {
+            color: '#334155'
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateChart(city) {
+  if (!urgentCounts[city]) urgentCounts[city] = 0;
+  urgentCounts[city]++;
+  urgentChart.data.labels = Object.keys(urgentCounts);
+  urgentChart.data.datasets[0].data = Object.values(urgentCounts);
+  urgentChart.update();
+}
+
+function showNotification(msg) {
+  const container = document.getElementById('notificationContainer');
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-bell-fill me-3 text-danger"></i>
+      <div class="flex-grow-1">
+        <strong>${msg}</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
+    </div>
+  `;
+  container.appendChild(notification);
+  
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+function updatePatientList() {
+  const container = document.getElementById('livePatientList');
+  container.innerHTML = '';
+  
+  livePatients.slice(0, 10).forEach(patient => {
+    const patientItem = document.createElement('div');
+    patientItem.className = 'patient-item';
+    patientItem.onclick = () => {
+      window.location.href = `/smart_matching/${patient.patient_id}`;
+    };
+    
+    patientItem.innerHTML = `
+      <div class="patient-icon">
+        <i class="bi bi-person-fill"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div class="fw-bold">${patient.name}</div>
+        <small class="text-muted">${patient.blood_type} • ${patient.location.city}</small>
+      </div>
+      <div class="text-end">
+        <span class="badge ${patient.urgency_level === 'critical' ? 'bg-danger' : 'bg-warning'} rounded-pill">
+          ${patient.urgency_level || 'routine'}
+        </span>
+      </div>
+    `;
+    
+    container.appendChild(patientItem);
+  });
+}
+
+function showInfoPopup() {
+  const modal = new bootstrap.Modal(document.getElementById('infoModal'));
+  modal.show();
+}
+
+// Socket.IO for real-time updates
+const socket = io();
+socket.on('new_patient', function(data) {
+  const isUrgent = data.urgency_level && data.urgency_level.toLowerCase() === 'critical';
+  const message = isUrgent 
+    ? `🚨 Critical patient: ${data.name} (${data.patient_id}) in ${data.location.city}`
+    : `New patient: ${data.name} (${data.patient_id}) in ${data.location.city}`;
+  
+  showNotification(message);
+  updateChart(data.location.city);
+  
+  livePatients.unshift(data);
+  if (livePatients.length > 10) livePatients.pop();
+  updatePatientList();
+});
+
+// Initialize charts on page load
+document.addEventListener('DOMContentLoaded', function() {
+  setupChart();
+  
+  // Fetch all data and setup charts
+  Promise.all([
+    fetch('/patients').then(r => r.json()),
+    fetch('/donors').then(r => r.json())
+  ])
+  .then(([patients, donors]) => {
+    // Blood Type Distribution
+    const bloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+    const ptCounts = bloodTypes.map(bt => patients.filter(p => p.blood_type === bt).length);
+    const dnCounts = bloodTypes.map(bt => donors.filter(d => d.blood_type === bt).length);
+    
+    new Chart(document.getElementById('bloodTypeChart'), {
+      type: 'bar',
+      data: {
+        labels: bloodTypes,
+        datasets: [
+          {
+            label: "Patients",
+            data: ptCounts,
+            backgroundColor: 'rgba(6, 182, 212, 0.8)',
+            borderColor: 'rgba(6, 182, 212, 1)',
+            borderWidth: 1,
+            borderRadius: 6
+          },
+          {
+            label: "Donors",
+            data: dnCounts,
+            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+            borderColor: 'rgba(16, 185, 129, 1)',
+            borderWidth: 1,
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#f8fafc' }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#94a3b8' },
+            grid: { color: '#334155' }
+          },
+          x: {
+            ticks: { color: '#94a3b8' },
+            grid: { color: '#334155' }
+          }
+        }
+      }
+    });
+
+    // Urgency Overview
+    const urgencies = ["routine", "moderate", "critical"];
+    const urgencyCounts = urgencies.map(u => 
+      patients.filter(p => (p.urgency_level || "").toLowerCase() === u).length
+    );
+    
+    new Chart(document.getElementById('urgencyPie'), {
+      type: 'doughnut',
+      data: {
+        labels: urgencies.map(u => u.charAt(0).toUpperCase() + u.slice(1)),
+        datasets: [{
+          data: urgencyCounts,
+          backgroundColor: [
+            'rgba(99, 102, 241, 0.8)',
+            'rgba(245, 158, 11, 0.8)',
+            'rgba(239, 68, 68, 0.8)'
+          ],
+          borderColor: [
+            'rgba(99, 102, 241, 1)',
+            'rgba(245, 158, 11, 1)',
+            'rgba(239, 68, 68, 1)'
+          ],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#f8fafc', padding: 20 }
+          }
+        }
+      }
+    });
+
+    // Pending Requests Over Time
+    const days = Array.from({length: 7}, (_, i) => `Day ${i + 1}`);
+    const pendingData = days.map(() => Math.floor(Math.random() * 50 + 20));
+    
+    new Chart(document.getElementById('pendingRequestsLine'), {
+      type: 'line',
+      data: {
+        labels: days,
+        datasets: [{
+          label: 'Pending Requests',
+          data: pendingData,
+          fill: true,
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          borderColor: 'rgba(99, 102, 241, 1)',
+          borderWidth: 3,
+          tension: 0.4,
+          pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#f8fafc' }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#94a3b8' },
+            grid: { color: '#334155' }
+          },
+          x: {
+            ticks: { color: '#94a3b8' },
+            grid: { color: '#334155' }
+          }
+        }
+      }
+    });
+
+    // Donor Registrations by City
+    const cityCounts = {};
+    donors.forEach(d => {
+      const city = d.location.city;
+      cityCounts[city] = (cityCounts[city] || 0) + 1;
+    });
+    const topCities = Object.entries(cityCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 7);
+    
+    new Chart(document.getElementById('donorCityBar'), {
+      type: 'bar',
+      data: {
+        labels: topCities.map(e => e[0]),
+        datasets: [{
+          label: 'Donors',
+          data: topCities.map(e => e[1]),
+          backgroundColor: 'rgba(16, 185, 129, 0.8)',
+          borderColor: 'rgba(16, 185, 129, 1)',
+          borderWidth: 1,
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#f8fafc' }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#94a3b8' },
+            grid: { color: '#334155' }
+          },
+          x: {
+            ticks: { color: '#94a3b8' },
+            grid: { color: '#334155' }
+          }
+        }
+      }
+    });
+  })
+  .catch(error => {
+    console.error('Error loading chart data:', error);
+  });
+});
+</script>
+{% endblock %}

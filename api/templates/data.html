@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+{% block title %}Data - Blood Bank Management System{% endblock %}
+
+{% block page_title %}Blood Bank Data{% endblock %}
+{% block page_subtitle %}Comprehensive donor and patient database{% endblock %}
+
+{% block header_actions %}
+<div class="d-flex gap-2">
+  <button class="btn btn-outline-light btn-sm" onclick="refreshData()">
+    <i class="bi bi-arrow-clockwise me-2"></i>
+    Refresh
+  </button>
+  <button class="btn btn-primary" onclick="exportData()">
+    <i class="bi bi-download me-2"></i>
+    Export JSON
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Navigation Tabs -->
+<div class="card">
+  <div class="card-header">
+    <ul class="nav nav-tabs card-header-tabs" id="dataTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="donors-tab" data-bs-toggle="tab" data-bs-target="#donors" type="button" role="tab" aria-controls="donors" aria-selected="true">
+          <i class="bi bi-heart-pulse me-2"></i>
+          Donors
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="patients-tab" data-bs-toggle="tab" data-bs-target="#patients" type="button" role="tab" aria-controls="patients" aria-selected="false">
+          <i class="bi bi-person-hearts me-2"></i>
+          Patients
+        </button>
+      </li>
+    </ul>
+  </div>
+  
+  <div class="card-body p-0">
+    <div class="tab-content" id="dataTabContent">
+      <!-- Donors Tab -->
+      <div class="tab-pane fade show active" id="donors" role="tabpanel" aria-labelledby="donors-tab">
+        <div class="p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+              <i class="bi bi-people me-2"></i>
+              Donors Database
+            </h5>
+            <span class="badge bg-primary" id="donorsCount">Loading...</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover" id="donorsTable">
+              <thead class="table-dark">
+                <tr>
+                  <th>Name</th>
+                  <th>Blood Type</th>
+                  <th>Phone</th>
+                  <th>Location</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Data will be populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patients Tab -->
+      <div class="tab-pane fade" id="patients" role="tabpanel" aria-labelledby="patients-tab">
+        <div class="p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+              <i class="bi bi-person-hearts me-2"></i>
+              Patients Database
+            </h5>
+            <span class="badge bg-info" id="patientsCount">Loading...</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover" id="patientsTable">
+              <thead class="table-dark">
+                <tr>
+                  <th>Name</th>
+                  <th>Blood Type</th>
+                  <th>Hospital</th>
+                  <th>Urgency</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Data will be populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="detailsModalLabel">
+          <i class="bi bi-info-circle me-2"></i>
+          Details
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="detailsModalBody">
+        <!-- Details will be populated by JavaScript -->
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="exportCurrentDetails()">
+          <i class="bi bi-download me-2"></i>
+          Export Details
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentData = null;
+let currentDetailsData = null;
+
+async function loadData() {
+  try {
+    const response = await fetch('/static/data.json');
+    const data = await response.json();
+    currentData = data;
+
+    // Update counts
+    document.getElementById('donorsCount').textContent = `${data.donors.length} donors`;
+    document.getElementById('patientsCount').textContent = `${data.patients.length} patients`;
+
+    // Build tables
+    buildDonorTable(data.donors);
+    buildPatientTable(data.patients);
+  } catch (error) {
+    console.error('Error loading data:', error);
+    showNotification('Error loading data', 'error');
+  }
+}
+
+function buildDonorTable(donors) {
+  const tbody = document.querySelector('#donorsTable tbody');
+  tbody.innerHTML = '';
+  
+  donors.forEach((donor, index) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        <div class="d-flex align-items-center">
+          <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
+            <i class="bi bi-person text-white"></i>
+          </div>
+          <strong>${donor.name}</strong>
+        </div>
+      </td>
+      <td>
+        <span class="badge bg-danger rounded-pill">${donor.blood_type}</span>
+      </td>
+      <td>
+        <a href="tel:${donor.phone}" class="text-decoration-none">
+          <i class="bi bi-telephone me-1"></i>${donor.phone}
+        </a>
+      </td>
+      <td>
+        <div>
+          <i class="bi bi-geo-alt me-1"></i>${donor.location.city}, ${donor.location.area}
+          <br>
+          <small class="text-muted">PIN: ${donor.location.pincode}</small>
+        </div>
+      </td>
+      <td>
+        <button class="btn btn-outline-primary btn-sm" onclick="showDonorDetails(${index})">
+          <i class="bi bi-eye me-1"></i>
+          Show Details
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function buildPatientTable(patients) {
+  const tbody = document.querySelector('#patientsTable tbody');
+  tbody.innerHTML = '';
+  
+  patients.forEach((patient, index) => {
+    const urgencyColor = patient.urgency_level === 'critical' ? 'bg-danger' : 
+                        patient.urgency_level === 'moderate' ? 'bg-warning' : 'bg-success';
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        <div class="d-flex align-items-center">
+          <div class="avatar-sm bg-info rounded-circle d-flex align-items-center justify-content-center me-2">
+            <i class="bi bi-person text-white"></i>
+          </div>
+          <strong>${patient.name}</strong>
+        </div>
+      </td>
+      <td>
+        <span class="badge bg-danger rounded-pill">${patient.blood_type}</span>
+      </td>
+      <td>
+        <div>
+          <i class="bi bi-hospital me-1"></i>${patient.location.hospital}
+          <br>
+          <small class="text-muted">${patient.location.city}</small>
+        </div>
+      </td>
+      <td>
+        <span class="badge ${urgencyColor}">${patient.urgency_level}</span>
+      </td>
+      <td>
+        <button class="btn btn-outline-info btn-sm" onclick="showPatientDetails(${index})">
+          <i class="bi bi-eye me-1"></i>
+          Show Details
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function showDonorDetails(index) {
+  const donor = currentData.donors[index];
+  currentDetailsData = donor;
+  
+  document.getElementById('detailsModalLabel').innerHTML = `
+    <i class="bi bi-person-heart me-2"></i>
+    Donor Details - ${donor.name}
+  `;
+  
+  const modalBody = document.getElementById('detailsModalBody');
+  modalBody.innerHTML = `
+    <div class="row g-4">
+      <!-- Basic Information -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-primary">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-person-badge me-2"></i>
+              Basic Information
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-6"><strong>Name:</strong></div>
+              <div class="col-6">${donor.name}</div>
+              <div class="col-6"><strong>Blood Type:</strong></div>
+              <div class="col-6"><span class="badge bg-danger">${donor.blood_type}</span></div>
+              <div class="col-6"><strong>Age:</strong></div>
+              <div class="col-6">${donor.age}</div>
+              <div class="col-6"><strong>Gender:</strong></div>
+              <div class="col-6">${donor.gender}</div>
+              <div class="col-6"><strong>Phone:</strong></div>
+              <div class="col-6"><a href="tel:${donor.phone}" class="text-decoration-none">${donor.phone}</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Location Information -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-info">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-geo-alt me-2"></i>
+              Location Details
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-6"><strong>City:</strong></div>
+              <div class="col-6">${donor.location.city}</div>
+              <div class="col-6"><strong>Area:</strong></div>
+              <div class="col-6">${donor.location.area}</div>
+              <div class="col-6"><strong>Pincode:</strong></div>
+              <div class="col-6">${donor.location.pincode}</div>
+              <div class="col-6"><strong>Hospital:</strong></div>
+              <div class="col-6">${donor.location.hospital}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Donation History -->
+      <div class="col-12">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-success">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-clock-history me-2"></i>
+              Donation History
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedTable("Donation History", donor.donation_history)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Cancellation History -->
+      <div class="col-12">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-warning">
+            <h6 class="mb-0 text-dark">
+              <i class="bi bi-x-circle me-2"></i>
+              Cancellation History
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedTable("Cancellation History", donor.cancellation_history)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Availability Pattern -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header" style="background: #6366f1;">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-calendar-check me-2"></i>
+              Availability Pattern
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Availability", donor.availability_pattern)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Health Profile -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-danger">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-heart-pulse me-2"></i>
+              Health Profile
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Health", donor.health_profile)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Engagement Metrics -->
+      <div class="col-12">
+        <div class="card bg-secondary border-0">
+          <div class="card-header" style="background: #10b981;">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-graph-up me-2"></i>
+              Engagement Metrics
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Engagement", donor.engagement_metrics)}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+  modal.show();
+}
+
+function showPatientDetails(index) {
+  const patient = currentData.patients[index];
+  currentDetailsData = patient;
+  
+  document.getElementById('detailsModalLabel').innerHTML = `
+    <i class="bi bi-person-hearts me-2"></i>
+    Patient Details - ${patient.name}
+  `;
+  
+  const modalBody = document.getElementById('detailsModalBody');
+  modalBody.innerHTML = `
+    <div class="row g-4">
+      <!-- Basic Information -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-primary">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-person-badge me-2"></i>
+              Basic Information
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-6"><strong>Name:</strong></div>
+              <div class="col-6">${patient.name}</div>
+              <div class="col-6"><strong>Blood Type:</strong></div>
+              <div class="col-6"><span class="badge bg-danger">${patient.blood_type}</span></div>
+              <div class="col-6"><strong>Age:</strong></div>
+              <div class="col-6">${patient.age}</div>
+              <div class="col-6"><strong>Gender:</strong></div>
+              <div class="col-6">${patient.gender}</div>
+              <div class="col-6"><strong>Urgency:</strong></div>
+              <div class="col-6"><span class="badge ${patient.urgency_level === 'critical' ? 'bg-danger' : patient.urgency_level === 'moderate' ? 'bg-warning' : 'bg-success'}">${patient.urgency_level}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Location Information -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-info">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-hospital me-2"></i>
+              Location Details
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-6"><strong>Hospital:</strong></div>
+              <div class="col-6">${patient.location.hospital}</div>
+              <div class="col-6"><strong>City:</strong></div>
+              <div class="col-6">${patient.location.city}</div>
+              <div class="col-6"><strong>Area:</strong></div>
+              <div class="col-6">${patient.location.area}</div>
+              <div class="col-6"><strong>Pincode:</strong></div>
+              <div class="col-6">${patient.location.pincode}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Transfusion History -->
+      <div class="col-12">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-success">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-droplet me-2"></i>
+              Transfusion History
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedTable("Transfusion History", patient.transfusion_history)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Medical Details -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-danger">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-heart-pulse me-2"></i>
+              Medical Details
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Medical Details", patient.medical_details)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Transfusion Schedule -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header bg-warning">
+            <h6 class="mb-0 text-dark">
+              <i class="bi bi-calendar-event me-2"></i>
+              Transfusion Schedule
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Transfusion Schedule", patient.transfusion_schedule)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Family Profile -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header" style="background: #6366f1;">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-people me-2"></i>
+              Family Profile
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Family Profile", patient.family_profile)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Care Coordination -->
+      <div class="col-md-6">
+        <div class="card bg-secondary border-0">
+          <div class="card-header" style="background: #10b981;">
+            <h6 class="mb-0 text-white">
+              <i class="bi bi-clipboard-heart me-2"></i>
+              Care Coordination
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Care Coordination", patient.care_coordination)}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Risk Factors -->
+      <div class="col-12">
+        <div class="card bg-secondary border-0">
+          <div class="card-header" style="background: #f59e0b;">
+            <h6 class="mb-0 text-dark">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              Risk Factors
+            </h6>
+          </div>
+          <div class="card-body">
+            ${buildNestedObject("Risk Factors", patient.risk_factors)}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+  modal.show();
+}
+
+function buildNestedTable(title, dataArray) {
+  if (!dataArray || dataArray.length === 0) {
+    return `<div class="text-center text-muted py-3">
+              <i class="bi bi-info-circle me-2"></i>
+              No ${title.toLowerCase()} available
+            </div>`;
+  }
+  
+  const keys = Object.keys(dataArray[0]);
+  let html = `<div class="table-responsive">
+                <table class="table table-dark table-sm mb-0">
+                  <thead>
+                    <tr>${keys.map(k => `<th>${k.replace(/_/g, ' ').toUpperCase()}</th>`).join('')}</tr>
+                  </thead>
+                  <tbody>`;
+  
+  dataArray.forEach(row => {
+    html += `<tr>${keys.map(k => `<td>${row[k] || '-'}</td>`).join('')}</tr>`;
+  });
+  
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function buildNestedObject(title, obj) {
+  if (!obj) {
+    return `<div class="text-center text-muted py-3">
+              <i class="bi bi-info-circle me-2"></i>
+              No ${title.toLowerCase()} available
+            </div>`;
+  }
+  
+  let html = '<div class="row g-2">';
+  for (let key in obj) {
+    let val = obj[key];
+    if (Array.isArray(val)) {
+      val = val.join(', ');
+    } else if (typeof val === 'object') {
+      val = JSON.stringify(val, null, 2);
+    }
+    
+    html += `
+      <div class="col-6"><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong></div>
+      <div class="col-6">${val}</div>
+    `;
+  }
+  html += '</div>';
+  return html;
+}
+
+function refreshData() {
+  loadData();
+  showNotification('Data refreshed successfully', 'success');
+}
+
+function exportData() {
+  if (currentData) {
+    const dataStr = JSON.stringify(currentData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'blood_bank_data.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    showNotification('Data exported successfully', 'success');
+  }
+}
+
+function exportCurrentDetails() {
+  if (currentDetailsData) {
+    const dataStr = JSON.stringify(currentDetailsData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${currentDetailsData.name || 'details'}_data.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showNotification('Details exported successfully', 'success');
+  }
+}
+
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('notificationContainer');
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  
+  const colors = {
+    success: 'border-success',
+    error: 'border-danger',
+    warning: 'border-warning',
+    info: 'border-info'
+  };
+  
+  notification.classList.add(colors[type] || colors.info);
+  notification.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-check-circle-fill me-3 text-${type === 'error' ? 'danger' : type}"></i>
+      <div class="flex-grow-1">
+        <strong>${message}</strong>
+      </div>
+      <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
+    </div>
+  `;
+  container.appendChild(notification);
+  
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+// Load data when page loads
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+{% endblock %}

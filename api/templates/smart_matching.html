@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+{% block title %}Smart Matching - Blood Bank Management System{% endblock %}
+
+{% block page_title %}Smart Matching{% endblock %}
+{% block page_subtitle %}AI-Powered Donor Matching for Patient {{ patient_id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  {% if notification %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="bi bi-check-circle me-2"></i>
+      {{ notification }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endif %}
+  
+  {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      {{ error }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Patient Info Card -->
+    <div class="col-lg-3">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-person-heart me-2"></i>
+            Patient Information
+          </h5>
+        </div>
+        <div class="card-body" style="color: var(--text-primary);">
+          {% if results['manual'] and results['manual']|length > 0 %}
+            {% set patient_info = results['manual'][0].donor %}
+            <div class="mb-3">
+              <div class="d-flex align-items-center mb-3">
+                <div class="avatar-lg bg-primary rounded-circle d-flex align-items-center justify-content-center me-3">
+                  <i class="bi bi-person text-white fs-4"></i>
+                </div>
+                <div>
+                  <h6 class="mb-1">{{ patient_info.name }}</h6>
+                  <small>Patient ID: {{ patient_id }}</small>
+                </div>
+              </div>
+              
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="text-center p-2 bg-danger bg-opacity-10 rounded">
+                    <i class="bi bi-droplet text-danger"></i>
+                    <div class="fw-bold">{{ patient_info.blood_type }}</div>
+                    <small>Blood Type</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="text-center p-2 bg-info bg-opacity-10 rounded">
+                    <i class="bi bi-geo-alt text-info"></i>
+                    <div class="fw-bold">{{ patient_info.location.city }}</div>
+                    <small>City</small>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="text-center p-2 bg-success bg-opacity-10 rounded">
+                    <i class="bi bi-hospital text-success"></i>
+                    <div class="fw-bold">{{ patient_info.location.hospital }}</div>
+                    <small>Hospital</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <div class="text-center text-muted">
+              <i class="bi bi-exclamation-circle fs-1 mb-3"></i>
+              <p>No patient information available</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Matching Results -->
+    <div class="col-lg-9">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-cpu me-2"></i>
+            AI-Powered Donor Matching Results
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <!-- Navigation Tabs -->
+          <ul class="nav nav-tabs nav-fill" id="matchingTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button" role="tab" aria-controls="manual" aria-selected="true">
+                <i class="bi bi-hand-index me-2"></i>
+                Manual Match
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="logreg-tab" data-bs-toggle="tab" data-bs-target="#logreg" type="button" role="tab" aria-controls="logreg" aria-selected="false">
+                <i class="bi bi-graph-up me-2"></i>
+                Logistic Regression
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="rf-tab" data-bs-toggle="tab" data-bs-target="#rf" type="button" role="tab" aria-controls="rf" aria-selected="false">
+                <i class="bi bi-tree me-2"></i>
+                Random Forest
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="xgb-tab" data-bs-toggle="tab" data-bs-target="#xgb" type="button" role="tab" aria-controls="xgb" aria-selected="false">
+                <i class="bi bi-lightning me-2"></i>
+                XGBoost
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="lgbm-tab" data-bs-toggle="tab" data-bs-target="#lgbm" type="button" role="tab" aria-controls="lgbm" aria-selected="false">
+                <i class="bi bi-speedometer2 me-2"></i>
+                LightGBM
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="ensemble-tab" data-bs-toggle="tab" data-bs-target="#ensemble" type="button" role="tab" aria-controls="ensemble" aria-selected="false">
+                <i class="bi bi-collection me-2"></i>
+                Ensemble Prediction
+              </button>
+            </li>
+          </ul>
+
+          <!-- Tab Content -->
+          <div class="tab-content" id="matchingTabContent">
+            {% for key in ['manual', 'logreg', 'rf', 'xgb', 'lgbm', 'ensemble'] %}
+            <div class="tab-pane fade {% if key == 'manual' %}show active{% endif %}" id="{{ key }}" role="tabpanel" aria-labelledby="{{ key }}-tab">
+              <div class="p-4">
+                {% if results[key] and results[key]|length > 0 %}
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">
+                      {% if key == 'manual' %}
+                        <i class="bi bi-hand-index text-primary me-2"></i>Manual Matching Results
+                      {% elif key == 'logreg' %}
+                        <i class="bi bi-graph-up text-info me-2"></i>Logistic Regression Predictions
+                      {% elif key == 'rf' %}
+                        <i class="bi bi-tree text-success me-2"></i>Random Forest Predictions
+                      {% elif key == 'xgb' %}
+                        <i class="bi bi-lightning text-warning me-2"></i>XGBoost Predictions
+                      {% elif key == 'lgbm' %}
+                        <i class="bi bi-speedometer2 text-info me-2"></i>LightGBM Predictions
+                      {% elif key == 'ensemble' %}
+                        <i class="bi bi-collection text-primary me-2"></i>Ensemble Predictions
+                      {% endif %}
+                    </h6>
+                    <span class="badge bg-secondary">{{ results[key]|length }} donors found</span>
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0">
+                      <thead class="table-dark">
+                        <tr>
+                          <th>Donor</th>
+                          <th>Blood Type</th>
+                          <th>Location</th>
+                          <th>Availability Score</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for item in results[key] %}
+                        <tr>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
+                                <i class="bi bi-person text-white"></i>
+                              </div>
+                              <div>
+                                <div class="fw-bold">{{ item.donor.name }}</div>
+                                <small class="text-muted">ID: {{ item.donor.donor_id }}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span class="badge bg-danger rounded-pill">{{ item.donor.blood_type }}</span>
+                          </td>
+                          <td>
+                            <div>
+                              <i class="bi bi-geo-alt me-1"></i>{{ item.donor.location.city }}
+                              <br>
+                              <small class="text-muted">
+                                <i class="bi bi-hospital me-1"></i>{{ item.donor.location.hospital }}
+                              </small>
+                            </div>
+                          </td>
+                          <td>
+                            {% if item.score is not none %}
+                              <div class="d-flex align-items-center">
+                                <div class="progress me-2" style="width: 60px; height: 8px;">
+                                  <div class="progress-bar {% if item.score > 0.8 %}bg-success{% elif item.score > 0.5 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                       role="progressbar" style="width: {{ (item.score * 100)|round(0) }}%"></div>
+                                </div>
+                                <span class="badge {% if item.score > 0.8 %}bg-success{% elif item.score > 0.5 %}bg-warning{% else %}bg-danger{% endif %}">
+                                  {{ (item.score * 100)|round(1) }}%
+                                </span>
+                              </div>
+                            {% else %}
+                              <span class="badge bg-secondary">Manual</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            {% if item.score is not none and item.score > 0.8 %}
+                              <span class="text-success fw-bold">
+                                <i class="bi bi-check-circle me-1"></i>Highly Available
+                              </span>
+                            {% elif item.score is not none and item.score > 0.5 %}
+                              <span class="text-warning fw-bold">
+                                <i class="bi bi-clock me-1"></i>Moderate
+                              </span>
+                            {% elif item.score is not none %}
+                              <span class="text-danger fw-bold">
+                                <i class="bi bi-x-circle me-1"></i>Low
+                              </span>
+                            {% else %}
+                              <span class="text-secondary">
+                                <i class="bi bi-hand-index me-1"></i>Manual
+                              </span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            <div class="btn-group btn-group-sm">
+                              <button class="btn btn-outline-info" 
+                                      onclick="contactDonor('{{ item.donor.phone | default('N/A') }}', '{{ item.donor.name }}')"
+                                      title="Contact Donor">
+                                <i class="bi bi-telephone"></i>
+                              </button>
+                              <button class="btn btn-outline-primary" 
+                                      onclick="showPredictionStats({{ item.score|default(0) }}, '{{ item.donor.name }}', '{{ item.donor.blood_type }}', '{{ item.donor.location.city }}', '{{ item.donor.location.hospital }}', '{{ key }}')"
+                                      title="View Prediction Stats">
+                                <i class="bi bi-graph-up"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% else %}
+                  <div class="text-center py-5">
+                    <i class="bi bi-search fs-1 text-muted mb-3"></i>
+                    <h6 class="text-muted">No donors found for {{ key|title|replace('_', ' ') }}</h6>
+                    <p class="text-muted mb-0">Try adjusting the matching criteria or check if the model is trained.</p>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Prediction Stats Modal -->
+<div class="modal fade" id="predictionStatsModal" tabindex="-1" aria-labelledby="predictionStatsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="predictionStatsLabel">
+          <i class="bi bi-graph-up me-2"></i>
+          Prediction Statistics
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="predictionStatsBody">
+        <!-- Stats will be injected here -->
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Contact Confirmation Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="contactModalLabel">
+          <i class="bi bi-telephone me-2"></i>
+          Contact Donor
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="contactModalBody">
+        <!-- Contact info will be injected here -->
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="callDonorBtn">
+          <i class="bi bi-telephone me-2"></i>
+          Call Now
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showPredictionStats(score, name, blood_type, city, hospital, model) {
+  let status = "Low Availability";
+  let statusColor = "text-danger";
+  let statusIcon = "bi-x-circle";
+  
+  if (score > 0.8) { 
+    status = "Highly Available"; 
+    statusColor = "text-success";
+    statusIcon = "bi-check-circle";
+  } else if (score > 0.5) { 
+    status = "Moderate Availability"; 
+    statusColor = "text-warning";
+    statusIcon = "bi-clock";
+  }
+
+  const modelNames = {
+    'manual': 'Manual Matching',
+    'logreg': 'Logistic Regression',
+    'rf': 'Random Forest',
+    'xgb': 'XGBoost',
+    'lgbm': 'LightGBM',
+    'ensemble': 'Ensemble Prediction'
+  };
+
+  const html = `
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="card bg-secondary">
+          <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-person me-2"></i>Donor Information</h6>
+          </div>
+          <div class="card-body">
+            <div class="mb-2"><strong>Name:</strong> ${name}</div>
+            <div class="mb-2"><strong>Blood Type:</strong> <span class="badge bg-danger">${blood_type}</span></div>
+            <div class="mb-2"><strong>City:</strong> <i class="bi bi-geo-alt me-1"></i>${city}</div>
+            <div class="mb-0"><strong>Hospital:</strong> <i class="bi bi-hospital me-1"></i>${hospital}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card bg-secondary">
+          <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-cpu me-2"></i>Prediction Results</h6>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <strong>Model Used:</strong> ${modelNames[model] || 'Unknown'}
+            </div>
+            <div class="mb-3">
+              <strong>Availability Score:</strong>
+              <div class="d-flex align-items-center mt-2">
+                <div class="progress me-3" style="width: 100px; height: 12px;">
+                  <div class="progress-bar ${score > 0.8 ? 'bg-success' : score > 0.5 ? 'bg-warning' : 'bg-danger'}" 
+                       role="progressbar" style="width: ${(score * 100).toFixed(1)}%"></div>
+                </div>
+                <span class="fw-bold">${(score * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+            <div class="mb-0">
+              <strong>Status:</strong> 
+              <span class="${statusColor} fw-bold">
+                <i class="bi ${statusIcon} me-1"></i>${status}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mt-4">
+      <h6><i class="bi bi-info-circle me-2"></i>Features Used for Prediction</h6>
+      <div class="row g-2 mt-2">
+        <div class="col-md-3">
+          <div class="bg-secondary p-2 rounded text-center">
+            <i class="bi bi-droplet text-danger"></i>
+            <div class="small">Blood Type</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="bg-secondary p-2 rounded text-center">
+            <i class="bi bi-geo-alt text-info"></i>
+            <div class="small">Location</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="bg-secondary p-2 rounded text-center">
+            <i class="bi bi-clock text-warning"></i>
+            <div class="small">Response Time</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="bg-secondary p-2 rounded text-center">
+            <i class="bi bi-heart-pulse text-success"></i>
+            <div class="small">Health Profile</div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <small>
+          <i class="bi bi-lightbulb me-1"></i>
+          This prediction is based on historical donation patterns, response rates, health metrics, and behavioral data.
+        </small>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('predictionStatsBody').innerHTML = html;
+  const modal = new bootstrap.Modal(document.getElementById('predictionStatsModal'));
+  modal.show();
+}
+
+function contactDonor(phone, name) {
+  const html = `
+    <div class="text-center mb-3">
+      <i class="bi bi-person-circle fs-1 text-primary mb-3"></i>
+      <h6>Contact ${name}</h6>
+    </div>
+    <div class="mb-3">
+      <strong>Phone Number:</strong> 
+      <span class="badge bg-primary fs-6">${phone}</span>
+    </div>
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle me-2"></i>
+      <strong>Note:</strong> Please ensure you have the patient's consent before contacting the donor.
+    </div>
+  `;
+  
+  document.getElementById('contactModalBody').innerHTML = html;
+  document.getElementById('callDonorBtn').onclick = function() {
+    if (phone !== 'N/A') {
+      window.open(`tel:${phone}`);
+    } else {
+      alert('Phone number not available for this donor.');
+    }
+  };
+  
+  const modal = new bootstrap.Modal(document.getElementById('contactModal'));
+  modal.show();
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>
+{% endblock %}
