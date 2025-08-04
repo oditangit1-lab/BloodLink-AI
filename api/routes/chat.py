@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 import random
-from api.utils.data_loader import get_data
+from utils.data_loader import get_data
 
 chat_bp = Blueprint('chat', __name__)
 

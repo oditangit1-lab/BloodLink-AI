@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from api.utils.data_loader import get_data
+from utils.data_loader import get_data
 from datetime import datetime
 
 matching_bp = Blueprint('matching', __name__)

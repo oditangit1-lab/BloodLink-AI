@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from api.utils.data_loader import get_data
+from utils.data_loader import get_data
 
 donors_bp = Blueprint('donors', __name__)
 

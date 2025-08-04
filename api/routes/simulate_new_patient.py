@@ -1,7 +1,7 @@
 import random
 from flask import Blueprint, jsonify, current_app
 from flask_socketio import emit
-from api.utils.data_loader import get_data
+from utils.data_loader import get_data
 
 simulate_bp = Blueprint('simulate', __name__)
 

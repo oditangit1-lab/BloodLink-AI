@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from api.utils.data_loader import get_data
+from utils.data_loader import get_data
 
 patients_bp = Blueprint('patients', __name__)
 
