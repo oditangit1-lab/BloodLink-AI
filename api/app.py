@@ -1,21 +1,23 @@
 from flask import Flask, render_template,request
-from api.routes.donors import donors_bp
-from api.routes.patients import patients_bp
-from api.routes.matching import matching_bp
 from flask_socketio import SocketIO
 socketio = SocketIO()
-from api.routes.simulate_new_patient import simulate_bp
-from api.routes.training import training_bp
-from api.routes.predict import predict_bp
-from api.routes.matching import get_patient, get_eligible_donors
-from api.routes.predict import predict_availability  
-from api.routes.predict import predict_availability_score
+
+from routes.donors import donors_bp
+from routes.patients import patients_bp
+from routes.matching import matching_bp
+from routes.simulate_new_patient import simulate_bp
+from routes.training import training_bp
+from routes.predict import predict_bp
+from routes.matching import get_patient, get_eligible_donors
+from routes.predict import predict_availability  
+from routes.predict import predict_availability_score
+from routes.about import about_bp
+from routes.education import education_bp
+
 from datetime import datetime ,timedelta
-from api.utils.data_loader import get_data
+from utils.data_loader import get_data
 import random
 from flask import Blueprint, jsonify
-from api.routes.about import about_bp
-from api.routes.education import education_bp
 import json
 
 def create_app():
@@ -129,4 +131,4 @@ def create_app():
 #     socketio.run(app, debug=True)
 if __name__ == '__main__':
     app = create_app()
-    socketio.run(app, host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=10000)
