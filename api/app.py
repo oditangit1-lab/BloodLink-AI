@@ -19,6 +19,8 @@ from utils.data_loader import get_data
 import random
 from flask import Blueprint, jsonify
 import json
+import os
+
 
 def create_app():
     app = Flask(__name__)
@@ -131,4 +133,5 @@ def create_app():
 #     socketio.run(app, debug=True)
 if __name__ == '__main__':
     app = create_app()
-    socketio.run(app, host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port)
