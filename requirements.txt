@@ -8,3 +8,5 @@ lightgbm
 joblib
 eventlet
 imbalanced-learn
+python-dotenv
+requests
