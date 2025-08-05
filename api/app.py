@@ -48,7 +48,7 @@ def create_app():
         except Exception:
             logins = []
         logins.append(data)
-        with open('api/static/login.json', 'w', encoding='utf-8') as f:
+        with open('static/login.json', 'w', encoding='utf-8') as f:
             json.dump(logins, f, ensure_ascii=False, indent=2)
         return jsonify({"status": "saved"})
 
@@ -134,4 +134,5 @@ def create_app():
 if __name__ == '__main__':
     app = create_app()
     port = int(os.environ.get("PORT", 5000))
+
     socketio.run(app, host="0.0.0.0", port=port)
