@@ -12,7 +12,7 @@ HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/deepset/rober
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 
 def get_context():
-    with open('api/data/education.txt', encoding='utf-8') as f:
+    with open('data/education.txt', encoding='utf-8') as f:
         return f.read()
 
 @education_bp.route('/ask', methods=['POST'])
@@ -23,7 +23,7 @@ def ask():
         return jsonify({"answer": "Please ask a question."})
 
     # Load and split education context
-    with open('api/data/education.txt', encoding='utf-8') as f:
+    with open('data/education.txt', encoding='utf-8') as f:
         paragraphs = [p.strip() for p in f.read().split('\n\n') if p.strip()]
 
     # Use simple scoring: find paragraphs with the most overlap
@@ -56,14 +56,15 @@ def ask():
 
 @education_bp.route('/about_text')
 def about_text():
-    with open('api/data/about.txt', encoding='utf-8') as f:return f.read()
+    with open('data/about.txt', encoding='utf-8') as f:return f.read()
 
 @education_bp.route('/education_suggestions')
 def education_suggestions():
-    with open('api/data/education.txt', encoding='utf-8') as f:
+    with open('data/education.txt', encoding='utf-8') as f:
         text = f.read()
     # Split into sentences or paragraphs
     # For paragraphs:
     paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
     return jsonify(paragraphs)
+
 
