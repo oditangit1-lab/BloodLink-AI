@@ -1,5 +1,16 @@
 # BloodLink AI
 
+# Create virtual environment
+python -m venv .env
+
+# Activate virtual environment
+# On Windows:
+.env\Scripts\activate
+# On macOS/Linux:
+source .env/bin/activate
+python api/app.py
+
+
 ## Setup
 
 ```bash
