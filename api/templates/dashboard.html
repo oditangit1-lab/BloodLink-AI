@@ -47,6 +47,12 @@
     <div class="row g-4">
       <!-- Urgent Patients Chart -->
       <div class="col-12">
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+          <strong>Module:</strong> Real-time Patient Monitoring and Analytics<br>
+          <strong>Message:</strong> Live patient data is showed below using Socket.IO.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
@@ -60,6 +66,23 @@
           <div class="card-body">
             <div class="chart-container">
               <canvas id="urgentChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Patient List -->
+        <div class="card">
+          <div class="card h-100">
+            <div class="card-header">
+              <h5 class="mb-0">
+                <i class="bi bi-person-lines-fill me-2"></i>
+                Live Patient List
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="patient-list p-3" id="livePatientList">
+                <!-- Patient items will be dynamically added here -->
+              </div>
             </div>
           </div>
         </div>
@@ -135,22 +158,6 @@
     </div>
   </div>
 
-  <!-- Live Patient List -->
-  <div class="col-lg-4">
-    <div class="card h-100">
-      <div class="card-header">
-        <h5 class="mb-0">
-          <i class="bi bi-person-lines-fill me-2"></i>
-          Live Patient List
-        </h5>
-      </div>
-      <div class="card-body p-0">
-        <div class="patient-list p-3" id="livePatientList">
-          <!-- Patient items will be dynamically added here -->
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- Info Modal -->
@@ -514,4 +521,5 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
 {% endblock %}
